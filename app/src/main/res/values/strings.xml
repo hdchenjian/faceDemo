@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FaceReg</string>
+    <string name="button_start_reg">开始</string>
+</resources>
