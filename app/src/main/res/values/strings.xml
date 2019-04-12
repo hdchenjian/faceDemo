@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">FaceReg</string>
-    <string name="button_start_reg">开始</string>
+    <string name="button_start_recognition">开始</string>
+
+    <string name="login_user_phone">手机号</string>
+    <string name="login_user_password">密码</string>
+    <string name="login_button">登录</string>
+    <string name="login_show_password">显示密码</string>
+
+    <string name="mode_manager">管理模式</string>
+    <string name="mode_recognition">识别模式</string>
 </resources>

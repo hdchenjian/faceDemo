@@ -14,10 +14,6 @@
       android:paddingLeft="1dp"
       android:paddingRight="1dp">
 
-    <SurfaceView
-        android:id="@+id/surface_view"
-        android:layout_width="150dp"
-        android:layout_height="150dp" />
 
 
     <ImageView

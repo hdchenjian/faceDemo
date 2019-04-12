@@ -1,6 +1,8 @@
 package com.iim.recognition.caffe;
 
 public class LoadLibraryModule {
+    private static LoadLibraryModule loadLibraryModule;
+
     public native int[] rgb2bitmap_native(byte[] data);
     public native byte[] yuv2rgb_native(byte[] yuv, int width, int height);
     public native byte[] yv122rgb_native(byte[] yuv, int width, int height);
@@ -14,5 +16,16 @@ public class LoadLibraryModule {
         System.loadLibrary("symphonypower");
         System.loadLibrary("symphony-cpu");
         System.loadLibrary("SNPE");
+    }
+
+    public static LoadLibraryModule getInstance(){
+        if (loadLibraryModule == null) {
+            synchronized (LoadLibraryModule.class) {
+                if (loadLibraryModule == null) {
+                    loadLibraryModule = new LoadLibraryModule();
+                }
+            }
+        }
+        return  loadLibraryModule;
     }
 }

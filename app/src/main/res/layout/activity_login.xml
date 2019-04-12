@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_margin="16dp"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:layout_centerHorizontal="true">
+
+  <LinearLayout
+      android:orientation="vertical"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingTop="32dp"
+      android:paddingLeft="32dp"
+      android:paddingRight="32dp">
+
+    <ImageView android:src="@mipmap/ic_launcher"
+               android:layout_width="wrap_content"
+               android:layout_height="72dp"
+               android:layout_marginBottom="24dp"
+               android:layout_gravity="center_horizontal" />
+
+    <EditText
+        android:id="@+id/user_phone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:maxLines="1"
+        android:inputType="text"
+        android:hint="@string/login_user_phone" />
+
+    <EditText android:id="@+id/user_password"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:layout_weight="1"
+              android:maxLines="1"
+              android:inputType="textPassword"
+              android:hint="@string/login_user_password" />
+
+    <android.support.v7.widget.AppCompatCheckBox
+        android:id="@+id/password_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/login_show_password" />
+
+    <Button
+        android:id="@+id/button_login"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/login_button" />
+  </LinearLayout>
+</LinearLayout>
