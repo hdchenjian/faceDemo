@@ -11,12 +11,10 @@ import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.renderscript.RenderScript;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
-import android.view.SurfaceHolder;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -28,6 +26,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -54,16 +54,15 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
 
     private int feature_db_num = 1000;
     private int feature_length = 512;
-    private float[][] feature_db = new float[feature_db_num][feature_length];
-    private String[] feature_db_name = new String[feature_db_num];
-    private int feature_db_index = 0;
+    private int max_face_num = 10;
 
+    private UserFeatureDB userFeatureDB;
+    List<Map<String, Object>> all_user_feature;
     public static class PostRegImage{
         public byte[] image_data;
         public String[] user_name;
         public int[][] face_region;
         public int count;
-        public int[] reg_list;
         public float[] score;
     }
 
@@ -92,36 +91,31 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 paint.setTextAlign(Paint.Align.LEFT);
                 Bitmap ret = bitmap.copy(bitmap.getConfig(), true);
                 Canvas canvas = new Canvas(ret);
-                for (int i = 0; i < info.reg_list.length; i++) {
-                    //System.out.println(info.user_name[i] + " " + i + " " + info.reg_list[i]);
-                    if(info.reg_list[i] != 0) {
-                        Rect bounds = new Rect();
-                        String score_str = String.valueOf(info.score[i]);
-                        String str = info.user_name[i] + "  " +
-                                score_str.substring(0, min(4, score_str.length() - 1));
-                        paint.getTextBounds(str, 0, str.length(), bounds);
-                        canvas.drawText(str, info.face_region[i][0],
-                                info.face_region[i][1], paint);
+                for (int i = 0; i < info.count; i++) {
+                    Rect bounds = new Rect();
+                    String score_str = String.valueOf(info.score[i]);
+                    String str = info.user_name[i] + "  " +
+                            score_str.substring(0, min(4, score_str.length() - 1));
+                    paint.getTextBounds(str, 0, str.length(), bounds);
+                    canvas.drawText(str, info.face_region[i][0],
+                            info.face_region[i][1], paint);
 
-                        canvas.drawRect(info.face_region[i][0], info.face_region[i][1],
-                                info.face_region[i][0] + info.face_region[i][2],
-                                info.face_region[i][1] + info.face_region[i][3], paint);
-                    }
+                    canvas.drawRect(info.face_region[i][0], info.face_region[i][1],
+                            info.face_region[i][0] + info.face_region[i][2],
+                            info.face_region[i][1] + info.face_region[i][3], paint);
                 }
-                //System.out.println(user_name[0] + " " + regcognition_num);
+                //Log.e(TAG, user_name[0] + " " + regcognition_num);
                 image_view.setImageBitmap(ret);
             } else {
                 image_view.setImageBitmap(bitmap);
             }
-            System.out.println("handleMessage total spend " + (System.currentTimeMillis() - startTime));
+            //Log.e(TAG, "handleMessage total spend " + (System.currentTimeMillis() - startTime));
         }
     }
 
     public class RecognitionThread extends Thread{
-        //private WeakReference<MainActivity> activityWeakReference;
         RecognitionThread(RecognitionActivity activity){
             super();
-            //activityWeakReference = new WeakReference<>(activity);;
         }
 
         @Override
@@ -134,8 +128,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 if (!have_new_image) {
                     lock.unlock();
                     try {
-                        Thread.sleep(2000);
-                        System.out.println("recognition waiting data sleep");
+                        Thread.sleep(20);
+                        Log.e(TAG, "recognition waiting data sleep");
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -146,29 +140,23 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     lock.unlock();
                 }
 
-                //System.out.println("recognition spend, copy data " + (System.currentTimeMillis() - startTime));
                 int feature_length = 512;
-                int[][] face_region = new int[10][4];
-                float[][] feature = new float[10][feature_length];
+                int[][] face_region = new int[max_face_num][4];
+                float[][] feature = new float[max_face_num][feature_length];
                 long[] code_ret = new long[1];
                 int face_count = loadLibraryModule.recognition_face(data, face_region, feature, 0, code_ret);
-                //System.out.println("recognition spend " + (System.currentTimeMillis() - startTime));
-                //System.out.println("face_count: " + face_count + " code:" + code_ret[0]);
 
-                String[] user_name = new String[10];
-                int regcognition_num = 0;
-                int[] reg_list = new int[10];
-                float[] score = new float[10];
+                String[] user_name = new String[max_face_num];
+                int[] reg_list = new int[max_face_num];
+                float[] score = new float[max_face_num];
                 for (int m = 0; m < face_count; m++) {
-                    for (int n = 0; n < 10; n++) {
-                        //System.out.println(feature[m][n]);
-                    }
                     float max_score = 0;
                     int max_score_index = -1;
-                    for (int i = 0; i < feature_db_index; i++) {
+                    for(int i = 0; i < all_user_feature.size(); i++) {
                         float current_score = 0;
-                        for (int k = 0; k < feature_length; k++) {
-                            current_score += (feature_db[i][k] * feature[m][k]);
+                        float[] feature_db_item = (float[])all_user_feature.get(i).get("feature");
+                        for (int j = 0; j < feature_length; j++) {
+                            current_score += (feature_db_item[j] * feature[m][j]);
                         }
                         if (current_score > max_score) {
                             max_score = current_score;
@@ -176,17 +164,14 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         }
                     }
                     if(max_score_index >= 0) {
-                        System.out.println("recognition score: " + max_score + " name: "
-                                + feature_db_name[max_score_index]);
+                        Log.e(TAG, "recognition score: " + max_score + " name: "
+                                + all_user_feature.get(max_score_index).get("name")
+                                + " person_id: " + all_user_feature.get(max_score_index).get("person_id"));
                     }
                     if (max_score >= 0.42) {
-                        user_name[m] = feature_db_name[max_score_index];
-                        reg_list[m] = 1;
-                        regcognition_num += 1;
+                        user_name[m] = (String)all_user_feature.get(max_score_index).get("name");
                     } else {
                         user_name[m] = "unkonw";
-                        reg_list[m] = 1;
-                        regcognition_num += 1;
                     }
                     score[m] = max_score;
                 }
@@ -195,31 +180,40 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 info.image_data = data;
                 info.face_region = face_region;
                 info.user_name = user_name;
-                info.count = regcognition_num;
-                info.reg_list = reg_list;
+                info.count = face_count;
                 info.score = score;
                 msg.obj = info;
                 handler.sendMessage(msg);
                 String face_size = "";
                 for (int m = 0; m < face_count; m++) {
-                    face_size += ("" + face_region[m][2] + "x" + face_region[m][3]);
+                    face_size += (" " + face_region[m][2] + "x" + face_region[m][3]);
                 }
-                System.out.println("face_count: " + face_count + "recognition total spend " +
+                Log.e(TAG, "face_count: " + face_count + " recognition total spend " +
                         (System.currentTimeMillis() - startTime) + " face_size " + face_size);
             }
         }
     }
 
-    private void init_registration(){
-        File image_path = new File("/sdcard/A/registor_image");
+    private void registration_local_image(){
+        String registration_image_path = "/sdcard/A/注册图片";
+        String deleted_suffix = "/已注册图片";
+        String deleted_image_path_path = registration_image_path + deleted_suffix;
+        File image_path = new File(registration_image_path);
+        if(!image_path.exists()){
+            image_path.mkdirs();
+        }
+        File deleted_image_path = new File(deleted_image_path_path);
+        if(!deleted_image_path.exists()){
+            deleted_image_path.mkdirs();
+        }
         File[] array = image_path.listFiles();
         if(array.length == 0) {
-            System.out.println("init_registration None image found in current directory!");
+            Log.e(TAG, "registration_local_image None image found in current directory!");
         }
         for(int j = 0; j < array.length && j < 5; j++){
             if(!array[j].isFile()) continue;
-            if(array[j].getName().lastIndexOf(".jpg") < 0 && array[j].getName().lastIndexOf(".png") < 0) continue;
-            System.out.println(array[j].getName());
+            if(!array[j].getName().endsWith(".jpg") && !array[j].getName().endsWith(".png")) continue;
+            Log.e(TAG, array[j].getName());
             byte[] image_data = new byte[(int)array[j].length()];
             try {
                 BufferedInputStream buf = new BufferedInputStream(new FileInputStream(array[j]));
@@ -231,8 +225,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 e.printStackTrace();
             }
 
-            int[][] face_region = new int[10][4];
-            float[][] feature = new float[10][feature_length];
+            int[][] face_region = new int[max_face_num][4];
+            float[][] feature = new float[max_face_num][feature_length];
             long[] code_ret = new long[1];
             loadLibraryModule.recognition_face(image_data, face_region, feature, 0, code_ret);
             if(code_ret[0] == 1000){
@@ -242,10 +236,12 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 }
                 String[] filePathSplit = array[j].getName().split("\\.");
                 String user_name = filePathSplit[0];
-                System.out.println("init_registration success" + " name: " + filePathSplit[0]);
-                feature_db_index += 1;
+                userFeatureDB.addUserFeature(user_name, feature_str);
+                File tmp_file = new File(array[j].getParent() + deleted_suffix + "/" + array[j].getName());
+                array[j].renameTo(tmp_file);
+                Log.e(TAG, "registration_local_image success" + array[j].getName());
             } else {
-                System.out.println("init_registration failed " + array[j].getName() +
+                Log.e(TAG, "registration_local_image failed " + array[j].getName() +
                         " code:" + code_ret[0]);
             }
         }
@@ -263,11 +259,16 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         }
 
         loadLibraryModule = LoadLibraryModule.getInstance();
-
         image_view = findViewById(R.id.image_view);
-
         handler = new RecognitionHandler();
-        init_registration();
+        userFeatureDB = new UserFeatureDB(this);
+        //userFeatureDB.deleteAllUserFeature();
+        registration_local_image();
+        all_user_feature = userFeatureDB.queryAllUserFeature();
+        for(int i = 0; i < all_user_feature.size(); i++) {
+            Log.e(TAG, "feature num: " + i + "/" +
+                    all_user_feature.size() + " " + all_user_feature.get(i).get("name"));
+        }
         thread_recognition_stop = false;
         thread_recognition = new RecognitionThread(this);
         thread_recognition.start();
@@ -407,7 +408,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
         if (data == null) {
-            System.out.println("onPreviewFrame data null");
+            Log.e(TAG, "onPreviewFrame data null");
             return;
         } else {
             long startTime = System.currentTimeMillis();
@@ -416,7 +417,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             have_new_image = true;
             current_image_byte = tmp;
             lock.unlock();
-            System.out.println("yuv2rgb " + (System.currentTimeMillis() - startTime));
+            //Log.e(TAG, "yv122rgb " + (System.currentTimeMillis() - startTime));
         }
 
     }

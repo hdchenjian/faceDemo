@@ -27,5 +27,31 @@ public class SimpleHttpClient {
         @FormUrlEncoded
         @POST("login")
         Call<ResponseBody> login(@Field("phone") String phone, @Field("password") String password);
+
+        @GET("get_all_group")
+        Call<ResponseBody> get_all_group(@Query("organization_id") int organization_id);
+
+        @GET("get_group_person")
+        Call<ResponseBody> get_group_person(@Query("group_id") int group_id);
+
+        @GET("get_person")
+        Call<ResponseBody> get_person(@Query("person_id") int person_id);
+
+        @FormUrlEncoded
+        @POST("update_person")
+        Call<ResponseBody> update_person(@Field("person_id") int person_id, @Field("name") String name,
+                                         @Field("phone") String phone);
+
+        @FormUrlEncoded
+        @POST("delete_person")
+        Call<ResponseBody> delete_person(@Field("person_id") int person_id);
+
+        @FormUrlEncoded
+        @POST("add_person")
+        Call<ResponseBody> add_person(@Field("group_id") int group_id, @Field("name") String name,
+                                      @Field("phone") String phone);
+
+        @GET("get_person_head_picture")
+        Call<ResponseBody> get_person_head_picture(@Query("picture_id") int picture_id);
     }
 }

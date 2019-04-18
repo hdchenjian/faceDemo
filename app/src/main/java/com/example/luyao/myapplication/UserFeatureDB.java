@@ -13,11 +13,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public class UserFeature {
+public class UserFeatureDB {
     private SQLiteDBHelper helper;
     private SQLiteDatabase db;
 
-    public UserFeature(Context context) {
+    public UserFeatureDB(Context context) {
         helper = new SQLiteDBHelper(context);
         db = helper.getWritableDatabase();
     }
@@ -81,7 +81,7 @@ public class UserFeature {
             }
     }
 
-    public List<Map<String, Object>> queryUserFeature() {
+    public List<Map<String, Object>> queryAllUserFeature() {
         ArrayList<Map<String, Object>> user_feature = new ArrayList<>();
         Cursor cursor = db.rawQuery(
                 "select * from " + SQLiteDBHelper.TABLE_NAME + " order by id asc", new String[] {});
@@ -90,7 +90,15 @@ public class UserFeature {
             content.put("id", cursor.getInt(cursor.getColumnIndex("id")));
             content.put("person_id", cursor.getInt(cursor.getColumnIndex("person_id")));
             content.put("have_upload_feature", cursor.getInt(cursor.getColumnIndex("have_upload_feature")));
-            content.put("feature", cursor.getString(cursor.getColumnIndex("feature")));
+            String feature_str = cursor.getString(cursor.getColumnIndex("feature"));
+            String[] feature_str_list = feature_str.split(",");
+            int feature_length = 512;
+            float[] feature_float = new float[feature_length];
+            for(int i = 0; i < feature_length; i++) {
+                feature_float[i] = Float.parseFloat(feature_str_list[i]);
+            }
+            content.put("feature", feature_float);
+
             content.put("name", cursor.getString(cursor.getColumnIndex("name")));
             user_feature.add(content);
         }
