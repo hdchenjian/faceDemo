@@ -29,7 +29,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 
-public class PersonActivity extends AppCompatActivity implements AdapterView.OnItemClickListener{
+public class PersonActivity extends AppCompatActivity{
 
     private final static String TAG = PersonActivity.class.getCanonicalName();
     private int person_id;
@@ -39,6 +39,7 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
     private ListView relation_list;
     private ActionBar actionBar;
     private Map<Integer, Map<String, Object>> relation_index_to_info = null;
+    private int relation_delete_position = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +53,55 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
         }
         person_id = getIntent().getIntExtra("person_id", 0);
         relation_list = findViewById(R.id.relation_list);
+
+        relation_list.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener(){
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                Log.e(TAG, "position: " + position + " " + relation_index_to_info.get(position));
+                relation_delete_position = position;
+                AlertDialog.Builder builder = new AlertDialog.Builder(PersonActivity.this);
+                builder.setTitle("");
+                builder.setMessage("您确定删除吗?");
+                builder.setPositiveButton("确定", relationDlgClick);
+                builder.setNegativeButton("取消", relationDlgClick);
+                builder.show();
+                return true;
+            }
+        });
         getPersonInfo();
+    }
+
+    private DialogInterface.OnClickListener relationDlgClick = new DialogInterface.OnClickListener() {
+        public void onClick(DialogInterface dialog, int which) {
+            if (which == AlertDialog.BUTTON_POSITIVE) {
+                deleteRelation((int)relation_index_to_info.get(relation_delete_position).get("relation_id"));
+            } else {
+            }
+        }
+    };
+
+    private void deleteRelation(int relation_id) {
+        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
+        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
+        Call<ResponseBody> call = service.delete_relation(relation_id);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                JSONObject responseJson = Utils.parseResponse(response, TAG);
+                if (response.code() == 200) {
+                    toast("删除成功");
+                    getPersonInfo();
+                } else {
+                    toast("连接网络失败，请稍后再试");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                toast("cannot connect to server");
+                t.printStackTrace();
+            }
+        });
     }
 
     private void fillPersonInfo(final JSONObject person_info_json){
@@ -75,17 +124,18 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
                     JSONObject relation_json = person_relation_json.optJSONObject(k);
                     person_relation.put("relation_id", relation_json.optInt("relation_id"));
                     person_relation.put("relation", relation_json.optString("relation"));
-                    person_relation.put("head_picture", relation_json.optString("head_picture"));
+                    String head_picture = SimpleHttpClient.BASE_URL + relation_json.optString("head_picture");
+                    person_relation.put("head_picture", head_picture);
                     person_relations.add(person_relation);
                     relation_index_to_info.put(k, person_relation);
                     Map<String, Object> map = new HashMap<>();
                     map.put("name", relation_json.optString("relation"));
+                    map.put("head_picture", head_picture);
                     relationList.add(map);
                 }
-                SimpleAdapter simpleAdapter = new SimpleAdapter(PersonActivity.this, relationList, R.layout.person,
-                        new String[] {"name"}, new int[] {R.id.name});
-                relation_list.setAdapter(simpleAdapter);
-                relation_list.setOnItemClickListener(PersonActivity.this);
+                CustomAdapter customAdapter = new CustomAdapter(
+                        PersonActivity.this, relationList, relation_index_to_info, PersonActivity.this, 0);
+                relation_list.setAdapter(customAdapter);
             }
         });
     }
@@ -94,11 +144,6 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.person_update_menu, menu);
         return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        Log.e(TAG, "position: " + position + " " + relation_index_to_info.get(position));
     }
 
     private void getPersonInfo() {
@@ -118,7 +163,6 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                // Log error here since request failed
                 toast("cannot connect to server");
                 t.printStackTrace();
             }
@@ -143,7 +187,6 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                // Log error here since request failed
                 toast("cannot connect to server");
                 t.printStackTrace();
             }
@@ -214,11 +257,6 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
         public void onClick(DialogInterface dialog, int which) {
             if (which == AlertDialog.BUTTON_POSITIVE) {
                 deletePerson();
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
                 finish();
             } else {
             }
@@ -226,7 +264,7 @@ public class PersonActivity extends AppCompatActivity implements AdapterView.OnI
     };
 
     public void deletePersonClick() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(PersonActivity.this);
         builder.setTitle("");
         builder.setMessage("您确定删除吗?");
         builder.setPositiveButton("确定", mDlgClick);

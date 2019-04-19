@@ -31,6 +31,20 @@ public class SimpleHttpClient {
         @GET("get_all_group")
         Call<ResponseBody> get_all_group(@Query("organization_id") int organization_id);
 
+        @FormUrlEncoded
+        @POST("add_group")
+        Call<ResponseBody> add_group(@Field("organization_id") int organization_id, @Field("name") String name,
+                                     @Field("sort") int sort);
+
+        @FormUrlEncoded
+        @POST("delete_group")
+        Call<ResponseBody> delete_group(@Field("group_id") int group_id);
+
+        @FormUrlEncoded
+        @POST("update_group")
+        Call<ResponseBody> update_group(@Field("group_id") int group_id, @Field("name") String name,
+                                        @Field("sort") int sort);
+
         @GET("get_group_person")
         Call<ResponseBody> get_group_person(@Query("group_id") int group_id);
 
@@ -51,7 +65,9 @@ public class SimpleHttpClient {
         Call<ResponseBody> add_person(@Field("group_id") int group_id, @Field("name") String name,
                                       @Field("phone") String phone);
 
-        @GET("get_person_head_picture")
-        Call<ResponseBody> get_person_head_picture(@Query("picture_id") int picture_id);
+        @FormUrlEncoded
+        @POST("delete_relation")
+        Call<ResponseBody> delete_relation(@Field("relation_id") int relation_id);
+
     }
 }

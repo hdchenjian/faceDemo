@@ -16,7 +16,6 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,7 +30,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 
-public class GroupActivity extends AppCompatActivity implements AdapterView.OnItemClickListener{
+public class GroupActivity extends AppCompatActivity{
 
     private final static String TAG = GroupActivity.class.getCanonicalName();
     private int group_id;
@@ -72,21 +71,20 @@ public class GroupActivity extends AppCompatActivity implements AdapterView.OnIt
                     group_person.put("name", person_json.optString("name"));
                     group_person.put("phone", person_json.optString("phone"));
                     group_person.put("person_id", person_json.optInt("person_id"));
-                    group_person.put("head_picture", person_json.optString("head_picture"));
+                    String head_picture = SimpleHttpClient.BASE_URL + person_json.optString("head_picture");
+                    group_person.put("head_picture", head_picture);
                     group_person.put("relation_count", person_json.optInt("relation_count"));
                     person_index_to_info.put(j, group_person);
                     Map<String, Object> map = new HashMap<>();
                     map.put("name", person_json.optString("name") +
                             " (" + person_json.optInt("relation_count") + ")");
-
-                    Glide.with(context).load(imageUrls[position]).into((ImageView) convertView);
-                    map.put("head_picture", person_json.optString("head_picture"));
+                    map.put("head_picture", head_picture);
                     personList.add(map);
                 }
-                SimpleAdapter simpleAdapter = new SimpleAdapter(GroupActivity.this, personList, R.layout.person,
-                        new String[] {"name", "head_picture"}, new int[] {R.id.name, R.id.head_image});
-                person_list.setAdapter(simpleAdapter);
-                person_list.setOnItemClickListener(GroupActivity.this);
+                CustomAdapter customAdapter = new CustomAdapter(
+                        GroupActivity.this, personList, person_index_to_info,
+                        GroupActivity.this, 100);
+                person_list.setAdapter(customAdapter);
             }
         });
     }
@@ -97,15 +95,10 @@ public class GroupActivity extends AppCompatActivity implements AdapterView.OnIt
         return super.onCreateOptionsMenu(menu);
     }
 
-    private void start_person_activity(int person_id){
+    public void start_person_activity(int person_id){
         Intent intent = new Intent(this, PersonActivity.class);
         intent.putExtra("person_id", person_id);
         startActivityForResult(intent, REQUEST_PERSON);
-    }
-
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        start_person_activity((int)person_index_to_info.get(position).get("person_id"));
     }
 
     private void getGroupPersonInfo() {
@@ -165,9 +158,6 @@ public class GroupActivity extends AppCompatActivity implements AdapterView.OnIt
         dialog.show();
         EditText text_name = dialogView.findViewById(R.id.text_name);
         EditText text_parent_phone = dialogView.findViewById(R.id.text_parent_phone);
-        final String name = text_name.getText().toString();
-        final String phone = text_parent_phone.getText().toString();
-        Log.e(TAG, name + " " + phone);
         Button confirm_button = dialogView.findViewById(R.id.confirm_button);
         Button cancel_button = dialogView.findViewById(R.id.cancel_button);
         confirm_button.setOnClickListener(new View.OnClickListener() {
