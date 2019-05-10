@@ -5,7 +5,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 public class SQLiteDBHelper extends SQLiteOpenHelper {
-    private static final String DATABASE_NAME = "webrtc_message.db";
+    private static final String DATABASE_NAME = "face.db";
     private static final int DATABASE_VERSION = 1;
     public static final String TABLE_NAME = "user_feature";
 
@@ -18,10 +18,10 @@ public class SQLiteDBHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("create table if not exists user_feature " +
-                "(`id` integer primary key autoincrement, " +
-                "`person_id` integer not null, " +
+                "(`relation_id` integer primary key not null, " +
+                "`relation` varchar(64) not null, " +
                 "`feature` text not null, " +
-                "`have_upload_feature` integer not null, " +
+                "`is_child` integer not null, " +
                 "`name` varchar(64) not null)");
     }
 

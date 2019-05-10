@@ -22,12 +22,13 @@ public class UserFeatureDB {
         db = helper.getWritableDatabase();
     }
 
-    public Long addUserFeature(String name, String feature) {
+    public Long addUserFeature(int relation_id, String relation, String feature, int is_child, String name) {
         ContentValues cv = new ContentValues();
-        cv.put("name", name);
+        cv.put("relation_id", relation_id);
+        cv.put("relation", relation);
         cv.put("feature", feature);
-        cv.put("person_id", 0);
-        cv.put("have_upload_feature", 0);
+        cv.put("is_child", is_child);
+        cv.put("name", name);
         db.beginTransaction();
         try {
             Long id = db.insert(SQLiteDBHelper.TABLE_NAME, null, cv);
@@ -38,37 +39,31 @@ public class UserFeatureDB {
         }
     }
 
-    public void updateUserFeature(ArrayList<Map> user_features) {
-        for(int i = 0; i < user_features.size(); i++) {
-            Map user_feature = user_features.get(i);
+    public void updateUserFeature(int relation_id, String relation, String feature, int is_child, String name) {
             ContentValues cv = new ContentValues();
-            if (user_feature.containsKey("name")) cv.put("name", String.valueOf(user_feature.get("name")));
-            if (user_feature.containsKey("feature")) cv.put("feature", String.valueOf(user_feature.get("feature")));
-            if (user_feature.containsKey("person_id")) cv.put("person_id", (int)user_feature.get("person_id"));
-            if (user_feature.containsKey("have_upload_feature")){
-                cv.put("have_upload_feature", (int)user_feature.get("have_upload_feature"));
-            }
-            db.beginTransaction();
+        cv.put("relation", relation);
+        cv.put("feature", feature);
+        cv.put("is_child", is_child);
+        cv.put("name", name);
+        db.beginTransaction();
             try {
-                db.update(SQLiteDBHelper.TABLE_NAME, cv, "id = ?",
-                        new String[]{String.valueOf(user_feature.get("id"))});
+                db.update(SQLiteDBHelper.TABLE_NAME, cv, "relation_id = ?",
+                        new String[]{String.valueOf(relation_id)});
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
             }
-        }
     }
 
-    public void deleteUserFeatureById(ArrayList<Integer> ids) {
-        for(int i = 0; i < ids.size(); i++) {
+    public void deleteUserFeatureById(int relation_id) {
             db.beginTransaction();
             try {
-                db.delete(SQLiteDBHelper.TABLE_NAME, "id = ?", new String[]{String.valueOf(ids.get(i))});
+                db.delete(SQLiteDBHelper.TABLE_NAME, "relation_id = ?",
+                        new String[]{String.valueOf(relation_id)});
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
             }
-        }
     }
 
     public void deleteAllUserFeature() {
@@ -84,12 +79,12 @@ public class UserFeatureDB {
     public List<Map<String, Object>> queryAllUserFeature() {
         ArrayList<Map<String, Object>> user_feature = new ArrayList<>();
         Cursor cursor = db.rawQuery(
-                "select * from " + SQLiteDBHelper.TABLE_NAME + " order by id asc", new String[] {});
+                "select * from " + SQLiteDBHelper.TABLE_NAME + " order by relation_id asc", new String[] {});
         while (cursor.moveToNext()) {
             HashMap<String, Object> content = new HashMap<>();
-            content.put("id", cursor.getInt(cursor.getColumnIndex("id")));
-            content.put("person_id", cursor.getInt(cursor.getColumnIndex("person_id")));
-            content.put("have_upload_feature", cursor.getInt(cursor.getColumnIndex("have_upload_feature")));
+            content.put("relation_id", cursor.getInt(cursor.getColumnIndex("relation_id")));
+            content.put("relation", cursor.getString(cursor.getColumnIndex("relation")));
+
             String feature_str = cursor.getString(cursor.getColumnIndex("feature"));
             String[] feature_str_list = feature_str.split(",");
             int feature_length = 512;
@@ -98,7 +93,7 @@ public class UserFeatureDB {
                 feature_float[i] = Float.parseFloat(feature_str_list[i]);
             }
             content.put("feature", feature_float);
-
+            content.put("is_child", cursor.getInt(cursor.getColumnIndex("is_child")));
             content.put("name", cursor.getString(cursor.getColumnIndex("name")));
             user_feature.add(content);
         }

@@ -1,5 +1,6 @@
 package com.example.luyao.myapplication;
 
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -20,16 +21,25 @@ import android.widget.Toast;
 
 import com.iim.recognition.caffe.LoadLibraryModule;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import static java.lang.Math.min;
 
@@ -50,13 +60,14 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private  byte[] current_image_byte;
     private Lock lock = new ReentrantLock();
     private Thread thread_recognition;
+    private Thread thread_message;
     private boolean thread_recognition_stop;
 
-    private int feature_db_num = 1000;
     private int feature_length = 512;
     private int max_face_num = 10;
 
     private UserFeatureDB userFeatureDB;
+    private Lock lock_user_feature = new ReentrantLock();
     List<Map<String, Object>> all_user_feature;
     public static class PostRegImage{
         public byte[] image_data;
@@ -149,6 +160,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 String[] user_name = new String[max_face_num];
                 int[] reg_list = new int[max_face_num];
                 float[] score = new float[max_face_num];
+                lock_user_feature.lock();
                 for (int m = 0; m < face_count; m++) {
                     float max_score = 0;
                     int max_score_index = -1;
@@ -175,6 +187,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     }
                     score[m] = max_score;
                 }
+                lock_user_feature.unlock();
                 Message msg = new Message();
                 PostRegImage info = new PostRegImage();
                 info.image_data = data;
@@ -190,6 +203,161 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 }
                 Log.d(TAG, "face_count: " + face_count + " recognition total spend " +
                         (System.currentTimeMillis() - startTime) + " face_size " + face_size);
+            }
+        }
+    }
+
+    public class UpdateFeatureThread extends Thread{
+        private boolean get_new_message_finish = true;
+        private int max_message_id;
+
+        UpdateFeatureThread(RecognitionActivity activity){
+            super();
+            max_message_id = getMax_message_id();
+        }
+
+        public int getMax_message_id() {
+            SharedPreferences message_index = getSharedPreferences("message_index", 0);
+            return message_index.getInt("max_message_id", -1);
+        }
+
+        public void setMax_message_id(int max_message_id) {
+            SharedPreferences message_index = getSharedPreferences("message_index", 0);
+            SharedPreferences.Editor message_index_editor = message_index.edit();
+            message_index_editor.putInt("max_message_id", max_message_id);
+            this.max_message_id = max_message_id;
+        }
+
+
+        private void get_all_feature(){
+            SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+            Call<ResponseBody> call = service.get_all_person_feature(GlobalParameter.getSid());
+            try {
+                Response<ResponseBody> response = call.execute();
+                JSONObject responseJson = Utils.parseResponse(response, TAG);
+                if (response.code() == 200) {
+                    JSONArray features = responseJson.optJSONArray("features");
+                    for(int i = 0; i < features.length(); i++){
+                        JSONObject feature = features.optJSONObject(i);
+                        int relation_id = feature.optInt("relation_id");
+                        String relation = feature.optString("relation");
+                        String feature_str = feature.optString("feature");
+                        int is_child = feature.optInt("is_child");
+                        String name = feature.optString("name");
+                        userFeatureDB.addUserFeature(relation_id, relation, feature_str, is_child, name);
+                    }
+                    max_message_id = 0;
+                    query_user_feature();
+                } else {
+                    toast("连接网络失败，请稍后再试");
+                }
+            } catch (IOException e) {
+                toast("连接网络失败，请稍后再试");
+                e.printStackTrace();
+            }
+        }
+
+        private void parseMessage(JSONObject responseJson){
+            JSONArray messages = responseJson.optJSONArray("messages");
+            ArrayList<Integer> delete_message_ids = new ArrayList<>();
+            for(int i = 0; i < messages.length(); i++) {
+                JSONObject message = messages.optJSONObject(i);
+                String message_type = message.optString("type");
+                int message_id = message.optInt("message_id");
+                delete_message_ids.add(message_id);
+                if (message_type.equals("add")) {
+                    int relation_id = message.optInt("relation_id");
+                    String relation = message.optString("relation");
+                    String feature_str = message.optString("feature");
+                    int is_child = message.optInt("is_child");
+                    String name = message.optString("name");
+                    userFeatureDB.addUserFeature(relation_id, relation, feature_str, is_child, name);
+                } else if (message_type.equals("delete")) {
+                    int relation_id = message.optInt("relation_id");
+                    userFeatureDB.deleteUserFeatureById(relation_id);
+
+                } else if (message_type.equals("update")) {
+                    int relation_id = message.optInt("relation_id");
+                    String relation = message.optString("relation");
+                    String feature_str = message.optString("feature");
+                    int is_child = message.optInt("is_child");
+                    String name = message.optString("name");
+                    userFeatureDB.updateUserFeature(relation_id, relation, feature_str, is_child, name);
+                } else {
+                    Log.e(TAG, "parseMessage: unknow message type");
+                }
+            }
+            int max_message_id_local = responseJson.optInt("max_message_id");
+            if(delete_message_ids.size() > 0){
+                query_user_feature();
+                delete_message(delete_message_ids, max_message_id_local);
+            } else {
+                if(max_message_id_local != max_message_id) {
+                    setMax_message_id(max_message_id_local);
+                }
+            }
+        }
+
+        private void delete_message(ArrayList<Integer> delete_message_ids, int max_message_id_local){
+            SimpleHttpClient.ServerAPI service = Utils.getHttpClient(10);
+            Call<ResponseBody> call = service.delete_new_message(delete_message_ids, GlobalParameter.getSid());
+            try {
+                Response<ResponseBody> response = call.execute();
+                if (response.code() == 200) {
+                    Log.e(TAG, "delete_message success: " + delete_message_ids);
+                    setMax_message_id(max_message_id_local);
+                } else {
+                    toast("连接网络失败，请稍后再试");
+                }
+            } catch (IOException e) {
+                toast("连接网络失败，请稍后再试");
+                e.printStackTrace();
+            }
+        }
+
+        private void get_new_message(){
+            SimpleHttpClient.ServerAPI service = Utils.getHttpClient(60);
+            Call<ResponseBody> call = service.get_new_message(max_message_id, GlobalParameter.getSid());
+            call.enqueue(new Callback<ResponseBody>() {
+                @Override
+                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                    JSONObject responseJson = Utils.parseResponse(response, TAG);
+                    if (response.code() == 200) {
+                        parseMessage(responseJson);
+                    } else {
+                        toast("连接网络失败，请稍后再试");
+                    }
+                    get_new_message_finish = true;
+                }
+
+                @Override
+                public void onFailure(Call<ResponseBody> call, Throwable t) {
+                    toast("连接网络失败，请检查您的网络");
+                    t.printStackTrace();
+                    get_new_message_finish = true;
+                }
+            });
+        }
+
+        @Override
+        public void run() {
+            super.run();
+            while(!thread_recognition_stop) {
+                if(max_message_id == -1){
+                    get_all_feature();
+                } else {
+                    if (get_new_message_finish) {
+                        get_new_message_finish = false;
+                        get_new_message();
+                    } else {
+                        try {
+                            Thread.sleep(20);
+                            Log.e(TAG, "recognition waiting data sleep");
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
             }
         }
     }
@@ -236,7 +404,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 }
                 String[] filePathSplit = array[j].getName().split("\\.");
                 String user_name = filePathSplit[0];
-                userFeatureDB.addUserFeature(user_name, feature_str);
+                userFeatureDB.addUserFeature(0, "", feature_str, 1, user_name);
                 File tmp_file = new File(array[j].getParent() + deleted_suffix + "/" + array[j].getName());
                 array[j].renameTo(tmp_file);
                 Log.e(TAG, "registration_local_image success" + array[j].getName());
@@ -247,6 +415,16 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         }
     }
 
+    private void query_user_feature(){
+        lock_user_feature.lock();
+        all_user_feature = userFeatureDB.queryAllUserFeature();
+        lock_user_feature.unlock();
+        for(int i = 0; i < all_user_feature.size(); i++) {
+            Log.e(TAG, "feature num: " + i + "/" +
+                    all_user_feature.size() + " " + all_user_feature.get(i).get("name") +
+                    " " + all_user_feature.get(i).get("relation"));
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -263,23 +441,20 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         handler = new RecognitionHandler();
         userFeatureDB = new UserFeatureDB(this);
         //userFeatureDB.deleteAllUserFeature();
-        registration_local_image();
-        all_user_feature = userFeatureDB.queryAllUserFeature();
-        for(int i = 0; i < all_user_feature.size(); i++) {
-            Log.e(TAG, "feature num: " + i + "/" +
-                    all_user_feature.size() + " " + all_user_feature.get(i).get("name"));
-        }
+        //registration_local_image();
+        query_user_feature();
         thread_recognition_stop = false;
         thread_recognition = new RecognitionThread(this);
         thread_recognition.start();
-        startCamera();
+        thread_message = new UpdateFeatureThread(this);
+        thread_message.start();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        startCamera();
         Log.e(TAG, "lifecycle: onStart");
+        startCamera();
     }
 
     /* Restarts the camera. */
@@ -306,6 +481,12 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     protected void onDestroy() {
         Log.e(TAG, "lifecycle: onDestroy");
         if(thread_recognition != null) thread_recognition_stop = true;
+        try {
+            thread_recognition.join();
+            thread_message.join();
+        } catch (InterruptedException e){
+            e.printStackTrace();
+        }
         stopCamera();
         super.onDestroy();
     }

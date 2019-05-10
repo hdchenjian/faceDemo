@@ -69,5 +69,8 @@ public class SimpleHttpClient {
 
         @GET("get_new_message")
         Call<ResponseBody> get_new_message(@Query("message_id") int message_id, @Header("sid") String sid);
+
+        @GET("get_all_person_feature")
+        Call<ResponseBody> get_all_person_feature(@Header("sid") String sid);
     }
 }
