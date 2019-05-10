@@ -81,9 +81,8 @@ public class PersonActivity extends AppCompatActivity{
     };
 
     private void deleteRelation(int relation_id) {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.delete_relation(relation_id);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.delete_relation(relation_id, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -147,9 +146,8 @@ public class PersonActivity extends AppCompatActivity{
     }
 
     private void getPersonInfo() {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.get_person(person_id);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.get_person(person_id, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -170,9 +168,8 @@ public class PersonActivity extends AppCompatActivity{
     }
 
     private void updatePerson(String name, String phone) {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.update_person(person_id, name, phone);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.update_person(person_id, name, phone, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -229,9 +226,8 @@ public class PersonActivity extends AppCompatActivity{
     }
 
     private void deletePerson() {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.delete_person(person_id);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.delete_person(person_id, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {

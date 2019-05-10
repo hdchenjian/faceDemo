@@ -102,9 +102,8 @@ public class GroupActivity extends AppCompatActivity{
     }
 
     private void getGroupPersonInfo() {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.get_group_person(group_id);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.get_group_person(group_id, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -126,9 +125,8 @@ public class GroupActivity extends AppCompatActivity{
     }
 
     private void addPerson(String name, String phone) {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.add_person(group_id, name, phone);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.add_person(group_id, name, phone, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {

@@ -34,7 +34,6 @@ public class ManagerActivity extends AppCompatActivity
         implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener{
 
     private final static String TAG = ManagerActivity.class.getCanonicalName();
-    private int organization_id;
     private ListView organization_list;
     private Map<Integer, Map<String, Object>> group_index_to_info = null;
     private int group_operate_position = -1;
@@ -56,9 +55,8 @@ public class ManagerActivity extends AppCompatActivity
 
 
     private void addGroup(String name, int sort) {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.add_group(organization_id, name, sort);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.add_group(GlobalParameter.getOrganization_id(), name, sort, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -123,7 +121,6 @@ public class ManagerActivity extends AppCompatActivity
             actionBar.setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("返回");
         }
-        organization_id = getIntent().getIntExtra("organization_id", 0);
         organization_list = findViewById(R.id.organization_list);
     }
 
@@ -198,9 +195,8 @@ public class ManagerActivity extends AppCompatActivity
 
     private void updateGroup(String name, int sort) {
         int group_id = (int)group_index_to_info.get(group_operate_position).get("group_id");
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.update_group(group_id, name, sort);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.update_group(group_id, name, sort, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -257,9 +253,8 @@ public class ManagerActivity extends AppCompatActivity
     }
 
     private void deleteGroup(int group_id) {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.delete_group(group_id);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.delete_group(group_id, GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -281,9 +276,8 @@ public class ManagerActivity extends AppCompatActivity
     }
 
     private void getGroupInfo() {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.get_all_group(organization_id);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        Call<ResponseBody> call = service.get_all_group(GlobalParameter.getOrganization_id(), GlobalParameter.getSid());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call,

@@ -39,14 +39,11 @@ public class MainActivity extends AppCompatActivity {
     private static final int RC_HANDLE_READ_EXTERNAL_STORAGE = 2;
     private static final int RC_HANDLE_WRITE_EXTERNAL_STORAGE = 3;
     private static final int REQUEST_MODE_SELECT = 1;
-    private static final int REQUEST_Recognition = 2;
-    private static final int REQUEST_Manager = 3;
 
     private EditText user_phone_text;
     private EditText user_password_test;
     private Button button_login;
     private AppCompatCheckBox password_checkbox;
-    private GlobalParameter globalParameter;
 
     protected void toast(final String msg) {
         runOnUiThread(new Runnable() {
@@ -65,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
         user_password_test = findViewById(R.id.user_password);
         button_login = findViewById(R.id.button_login);
 
-        globalParameter = new GlobalParameter();
         password_checkbox = (AppCompatCheckBox) findViewById(R.id.password_checkbox);
         password_checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
@@ -113,49 +109,29 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, REQUEST_MODE_SELECT);
     }
 
-    private void start_recognition(){
-        Intent intent = new Intent(this, RecognitionActivity.class);
-        intent.putExtra("organization_id", globalParameter.organization_id);
-        startActivityForResult(intent, REQUEST_Recognition);
-    }
-
-    private void start_manager(){
-        Intent intent = new Intent(this, ManagerActivity.class);
-        intent.putExtra("organization_id", globalParameter.organization_id);
-        startActivityForResult(intent, REQUEST_Manager);
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_MODE_SELECT) {
             if (resultCode == RESULT_OK) {
-                int mode = Integer.parseInt(data.getStringExtra("mode"));
-                Log.e(TAG, "select mode: " + mode);
-                if (mode == 0) {
-                    start_manager();
-                } else {
-                    start_recognition();
-                }
+                Log.e(TAG, "MODE_SELECT finish");
             }
-        } else if (requestCode == REQUEST_Recognition) {
-            Log.e(TAG, "Recognition finish");
         } else {
             Log.e(TAG, "Unknow error");
         }
     }
 
     private int login(String user_phone, String password) {
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(SimpleHttpClient.BASE_URL).build();
-        SimpleHttpClient.ServerAPI service = retrofit.create(SimpleHttpClient.ServerAPI.class);
-        Call<ResponseBody> call = service.login(user_phone, password);
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        String mac = Utils.getMac(this).replace(":", "");
+        Call<ResponseBody> call = service.login(user_phone, password, mac);
         call.enqueue(new Callback<ResponseBody>() {
                 @Override
                 public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                     JSONObject responseJson = Utils.parseResponse(response, TAG);
                     if (response.code() == 200) {
                         Log.e(TAG, responseJson.optString("organization_id"));
-                        globalParameter.organization_id = Integer.parseInt(
-                                responseJson.optString("organization_id"));
+                        GlobalParameter.setOrganization_id(responseJson.optInt("organization_id"));
+                        GlobalParameter.setSid(responseJson.optString("sid"));
                     } else {
                         toast("连接网络失败，请稍后再试");
                     }
@@ -163,7 +139,9 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void run() {
                                 button_login.setEnabled(true);
-                                start_mode_select();
+                                if(GlobalParameter.getSid() != null && GlobalParameter.getSid().length() == 32) {
+                                    start_mode_select();
+                                }
                             }
                         });
                 }
@@ -307,8 +285,4 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
-
-    public static class GlobalParameter{
-        int organization_id;
-    }
 }

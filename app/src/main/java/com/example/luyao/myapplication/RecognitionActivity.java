@@ -188,7 +188,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 for (int m = 0; m < face_count; m++) {
                     face_size += (" " + face_region[m][2] + "x" + face_region[m][3]);
                 }
-                Log.e(TAG, "face_count: " + face_count + " recognition total spend " +
+                Log.d(TAG, "face_count: " + face_count + " recognition total spend " +
                         (System.currentTimeMillis() - startTime) + " face_size " + face_size);
             }
         }

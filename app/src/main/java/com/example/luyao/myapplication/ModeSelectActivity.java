@@ -16,6 +16,9 @@ public class ModeSelectActivity extends AppCompatActivity {
     private Button button_mode_manager;
     private Button button_mode_recognition;
 
+    private static final int REQUEST_Recognition = 2;
+    private static final int REQUEST_Manager = 3;
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -24,6 +27,16 @@ public class ModeSelectActivity extends AppCompatActivity {
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void start_recognition(){
+        Intent intent = new Intent(this, RecognitionActivity.class);
+        startActivityForResult(intent, REQUEST_Recognition);
+    }
+
+    private void start_manager(){
+        Intent intent = new Intent(this, ManagerActivity.class);
+        startActivityForResult(intent, REQUEST_Manager);
     }
 
     @Override
@@ -42,10 +55,7 @@ public class ModeSelectActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 button_mode_manager.setEnabled(false);
-                Intent resultData = new Intent();
-                resultData.putExtra("mode", "0");
-                setResult(Activity.RESULT_OK, resultData);
-                finish();
+                start_manager();
             }
         });
 
@@ -54,14 +64,28 @@ public class ModeSelectActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 button_mode_recognition.setEnabled(false);
-                Intent resultData = new Intent();
-                resultData.putExtra("mode", "1");
-                setResult(Activity.RESULT_OK, resultData);
-                finish();
+                start_recognition();
             }
         });
     }
-    
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_Recognition) {
+            if (resultCode == RESULT_OK) {
+                Log.e(TAG, "Recognition finish");
+            }
+            button_mode_recognition.setEnabled(true);
+        } else if (requestCode == REQUEST_Manager) {
+            if (resultCode == RESULT_OK) {
+                Log.e(TAG, "Manager finish");
+            }
+            button_mode_manager.setEnabled(true);
+        } else {
+            Log.e(TAG, "Unknow error");
+        }
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
