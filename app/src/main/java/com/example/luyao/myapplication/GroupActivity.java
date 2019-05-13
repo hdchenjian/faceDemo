@@ -167,6 +167,9 @@ public class GroupActivity extends AppCompatActivity{
                 if (name.isEmpty() || phone.isEmpty()) {
                     toast("名字和手机号不能为空!");
                     return;
+                } else if (phone.length() != 11) {
+                    toast("手机号应为11位数字!");
+                    return;
                 } else {
                     addPerson(name, phone);
                 }

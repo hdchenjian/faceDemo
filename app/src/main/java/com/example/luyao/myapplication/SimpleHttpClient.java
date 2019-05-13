@@ -2,13 +2,17 @@ package com.example.luyao.myapplication;
 
 import java.util.List;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.Part;
 import retrofit2.http.Query;
 
 
@@ -72,5 +76,13 @@ public class SimpleHttpClient {
 
         @GET("get_all_person_feature")
         Call<ResponseBody> get_all_person_feature(@Header("sid") String sid);
+
+        @Multipart
+        @POST("upload_recognition_image")
+        Call<ResponseBody> upload_recognition_image(@Part MultipartBody.Part image,
+                                                    @Part("relation_ids") RequestBody relation_ids,
+                                                    @Part("time") RequestBody time,
+                                                    @Header("sid") String sid);
+
     }
 }

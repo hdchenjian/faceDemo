@@ -30,12 +30,18 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -69,19 +75,62 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private UserFeatureDB userFeatureDB;
     private Lock lock_user_feature = new ReentrantLock();
     List<Map<String, Object>> all_user_feature;
+    Map<Integer, Date> upload_recognition_image_time = new HashMap<>();
+    Map<Integer, Integer> upload_times = new HashMap<>();
     public static class PostRegImage{
         public byte[] image_data;
         public String[] user_name;
         public int[][] face_region;
         public int count;
         public float[] score;
+        public String relation_ids;
     }
 
     public class RecognitionHandler extends Handler {
+        private void upload_image(byte[] image_jpg, String relation_ids){
+            SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+
+            RequestBody requestFile = RequestBody.create(MediaType.parse("image/jpeg"), image_jpg);
+            // MultipartBody.Part is used to send also the actual file name
+            MultipartBody.Part body = MultipartBody.Part.createFormData(
+                    "image", "img.jpg", requestFile);
+            // add another part within the multipart request
+            //RequestBody relation_id = RequestBody.create(okhttp3.MultipartBody.FORM, relation_id);
+            //RequestBody time = RequestBody.create(okhttp3.MultipartBody.FORM, );
+            RequestBody relation_ids_body = RequestBody.create(okhttp3.MultipartBody.FORM, relation_ids);
+            Date time_now = new Date();
+            RequestBody time_body = RequestBody.create(
+                    okhttp3.MultipartBody.FORM, String.valueOf(time_now.getTime()));
+
+            Call<ResponseBody> call = service.upload_recognition_image(
+                    body, relation_ids_body, time_body, GlobalParameter.getSid());
+            call.enqueue(new retrofit2.Callback<ResponseBody>() {
+                @Override
+                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                    JSONObject responseJson = Utils.parseResponse(response, TAG);
+                    if (response.code() == 200) {
+                    } else {
+                        toast("连接网络失败，请稍后再试");
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ResponseBody> call, Throwable t) {
+                    toast("连接网络失败，请检查您的网络");
+                    t.printStackTrace();
+                }
+            });
+        }
+
         @Override
         public void handleMessage(Message msg) {
             long startTime = System.currentTimeMillis();
             PostRegImage info = (PostRegImage)msg.obj;
+            if(!info.relation_ids.equals("")) {
+                byte[] image_jpg = loadLibraryModule.rgb2jpg_native(info.image_data, image_size.width, image_size.height);
+                upload_image(image_jpg, info.relation_ids);
+            }
+
             int[] colors = loadLibraryModule.rgb2bitmap_native(info.image_data);
             Bitmap bitmap = Bitmap.createBitmap(colors, 0, image_size.height,
                     image_size.height, image_size.width, Bitmap.Config.ARGB_8888);
@@ -140,7 +189,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     lock.unlock();
                     try {
                         Thread.sleep(20);
-                        Log.e(TAG, "recognition waiting data sleep");
+                        //Log.e(TAG, "recognition waiting data sleep");
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -161,6 +210,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 int[] reg_list = new int[max_face_num];
                 float[] score = new float[max_face_num];
                 lock_user_feature.lock();
+                String relation_ids = "";
                 for (int m = 0; m < face_count; m++) {
                     float max_score = 0;
                     int max_score_index = -1;
@@ -178,10 +228,45 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     if(max_score_index >= 0) {
                         Log.e(TAG, "recognition score: " + max_score + " name: "
                                 + all_user_feature.get(max_score_index).get("name")
-                                + " person_id: " + all_user_feature.get(max_score_index).get("person_id"));
+                                + " relation: " + all_user_feature.get(max_score_index).get("relation"));
                     }
                     if (max_score >= 0.42) {
-                        user_name[m] = (String)all_user_feature.get(max_score_index).get("name");
+                        if((int)all_user_feature.get(max_score_index).get("is_child") == 1) {
+                            user_name[m] = (String)all_user_feature.get(max_score_index).get("name");
+                        } else {
+                            user_name[m] = (String)all_user_feature.get(max_score_index).get("name") +
+                                    " " + (String) all_user_feature.get(max_score_index).get("relation");
+                        }
+                        Integer current_relation_id =
+                                (Integer)all_user_feature.get(max_score_index).get("relation_id");
+                        Date time_now = new Date();
+                        boolean need_upload = false;
+                        if(upload_recognition_image_time.containsKey(current_relation_id)) {
+                            Long time_delta = time_now.getTime() -
+                                    upload_recognition_image_time.get(current_relation_id).getTime();
+                            int min_time_delta = 30000;
+                            if(upload_times.containsKey(current_relation_id) &&
+                                    upload_times.get(current_relation_id) >= 3) {
+                                min_time_delta *= 1;
+                            }
+                            if (time_delta > min_time_delta) {
+                                need_upload = true;
+                            } else {
+                                need_upload = false;
+                            }
+                        } else{
+                            need_upload = true;
+                        }
+                        if(need_upload){
+                            relation_ids += String.valueOf(current_relation_id) + ",";
+                            upload_recognition_image_time.put(current_relation_id, time_now);
+                            if(upload_times.containsKey(current_relation_id)) {
+                                upload_times.put(current_relation_id,
+                                        upload_times.get(current_relation_id) + 1);
+                            } else {
+                                upload_times.put(current_relation_id, 1);
+                            }
+                        }
                     } else {
                         user_name[m] = "unkonw";
                     }
@@ -195,6 +280,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 info.user_name = user_name;
                 info.count = face_count;
                 info.score = score;
+                info.relation_ids = relation_ids;
                 msg.obj = info;
                 handler.sendMessage(msg);
                 String face_size = "";
@@ -225,6 +311,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             SharedPreferences message_index = getSharedPreferences("message_index", 0);
             SharedPreferences.Editor message_index_editor = message_index.edit();
             message_index_editor.putInt("max_message_id", max_message_id);
+            message_index_editor.commit();
             this.max_message_id = max_message_id;
         }
 
@@ -246,7 +333,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         String name = feature.optString("name");
                         userFeatureDB.addUserFeature(relation_id, relation, feature_str, is_child, name);
                     }
-                    max_message_id = 0;
+                    setMax_message_id(0);
                     query_user_feature();
                 } else {
                     toast("连接网络失败，请稍后再试");
@@ -316,7 +403,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         }
 
         private void get_new_message(){
-            SimpleHttpClient.ServerAPI service = Utils.getHttpClient(60);
+            SimpleHttpClient.ServerAPI service = Utils.getHttpClient(180);
             Call<ResponseBody> call = service.get_new_message(max_message_id, GlobalParameter.getSid());
             call.enqueue(new Callback<ResponseBody>() {
                 @Override
@@ -351,8 +438,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         get_new_message();
                     } else {
                         try {
-                            Thread.sleep(20);
-                            Log.e(TAG, "recognition waiting data sleep");
+                            Thread.sleep(500);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
