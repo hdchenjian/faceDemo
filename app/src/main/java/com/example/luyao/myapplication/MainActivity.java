@@ -133,7 +133,8 @@ public class MainActivity extends AppCompatActivity {
                         GlobalParameter.setOrganization_id(responseJson.optInt("organization_id"));
                         GlobalParameter.setSid(responseJson.optString("sid"));
                     } else {
-                        toast("连接网络失败，请稍后再试");
+                        //toast("连接网络失败，请稍后再试");
+                        toast(responseJson.optString("detail"));
                     }
                     runOnUiThread(new Runnable() {
                             @Override

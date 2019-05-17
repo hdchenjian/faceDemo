@@ -16,9 +16,12 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.iim.recognition.caffe.LoadLibraryModule;
 
 import org.json.JSONArray;
@@ -58,7 +61,42 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private static int cameraId = 0;
     private final CameraErrorCallback mErrorCallback = new CameraErrorCallback();
 
+    private long recognition_time = 0;
+    private long detect_face_time = 0;
+    private boolean clear_recognition_image_called = false;
+    private int last_recognition_person_id;
+    private List<Bitmap> recognition_images = new ArrayList<>();
+    private List<Integer> recognition_relation_ids = new ArrayList<>();
+    private List<String> recognition_name = new ArrayList<>();
+    private List<ImageView> recognition_image_view = new ArrayList<>();
+    private List<TextView> recognition_image_relation = new ArrayList<>();
+    private List<ImageView> notice_relation = new ArrayList<>();
+    private List<TextView> notice_relation_name = new ArrayList<>();
+    private int recognition_image_num = 3;
+    private int notice_num = 4;
+
     private ImageView image_view;
+    private ImageView image_1;
+    private TextView image_1_relation;
+    private ImageView image_2;
+    private TextView image_2_relation;
+    private ImageView image_3;
+    private TextView image_3_relation;
+
+    private ImageView recognition_success;
+    private TextView text_recognition;
+
+    private TextView recognition_name_view;
+
+    private ImageView notice_1;
+    private TextView relation_1_text;
+    private ImageView notice_2;
+    private TextView relation_2_text;
+    private ImageView notice_3;
+    private TextView relation_3_text;
+    private ImageView notice_4;
+    private TextView relation_4_text;
+
     private SurfaceTexture surfaceTexture;
 
     private Handler handler;
@@ -75,6 +113,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private UserFeatureDB userFeatureDB;
     private Lock lock_user_feature = new ReentrantLock();
     List<Map<String, Object>> all_user_feature;
+    Map<Integer, List<Map<String, Object>>> person_id_to_relation = new HashMap<>();
     Map<Integer, Date> upload_recognition_image_time = new HashMap<>();
     Map<Integer, Integer> upload_times = new HashMap<>();
     public static class PostRegImage{
@@ -127,7 +166,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             long startTime = System.currentTimeMillis();
             PostRegImage info = (PostRegImage)msg.obj;
             if(!info.relation_ids.equals("")) {
-                byte[] image_jpg = loadLibraryModule.rgb2jpg_native(info.image_data, image_size.width, image_size.height);
+                byte[] image_jpg = loadLibraryModule.rgb2jpg_native(info.image_data, image_size.height, image_size.width);
                 upload_image(image_jpg, info.relation_ids);
             }
 
@@ -178,11 +217,134 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             super();
         }
 
+        private Bitmap  update_recognition_image(Map<String, Object> user_feature,
+                                              int m, byte[] data, int[][] face_region, Bitmap bitmap){
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    recognition_success.setVisibility(View.VISIBLE);
+                    text_recognition.setVisibility(View.VISIBLE);
+                    if ((int) user_feature.get("is_child") == 1) {
+                        recognition_name_view.setText((String)user_feature.get("name"));
+                    } else {
+                        recognition_name_view.setText(
+                                (String) user_feature.get("name") + user_feature.get("relation"));
+                    }
+
+                    int current_person_id = (int)user_feature.get("person_id");;
+                    if(current_person_id != last_recognition_person_id) {
+                        for (int i = 0; i < notice_num; i++) {
+                            notice_relation_name.get(i).setVisibility(View.INVISIBLE);
+                            notice_relation.get(i).setVisibility(View.INVISIBLE);
+                        }
+                        last_recognition_person_id = current_person_id;
+                        List<Map<String, Object>> relations = person_id_to_relation.get(current_person_id);
+                        int show_index = 0;
+                        for (int i = 0; i < relations.size() && show_index < notice_num; i++) {
+                            Map<String, Object> relation = relations.get(i);
+                            if(0 == (int)relation.get("is_child")) {
+                                notice_relation_name.get(show_index).setVisibility(View.VISIBLE);
+                                notice_relation.get(show_index).setVisibility(View.VISIBLE);
+                                String head_picture_url =
+                                        SimpleHttpClient.BASE_URL.replace("api/", "api") +
+                                                relation.get("head_picture") + "&sid=" + GlobalParameter.getSid();
+                                Glide.with(RecognitionActivity.this).load(
+                                        head_picture_url).into(notice_relation.get(show_index));
+                                notice_relation_name.get(show_index).setText((String)relation.get("relation"));
+                                show_index += 1;
+                                //Log.e(TAG, head_picture_url + " " + relation.get("relation"));
+                            }
+                        }
+                    }
+                }
+            });
+
+            int relation_id = (int)user_feature.get("relation_id");
+            boolean need_update_image = false;
+            if(recognition_relation_ids.size() == 0 ||
+                    recognition_relation_ids.get(recognition_relation_ids.size() - 1) != relation_id){
+                need_update_image = true;
+            }
+            if(need_update_image) {
+                if (recognition_images.size() == 3) {
+                    recognition_images.remove(0);
+                    recognition_name.remove(0);
+                    recognition_relation_ids.remove(0);
+                } else {
+                }
+
+                if (bitmap == null) {
+                    int[] colors = loadLibraryModule.rgb2bitmap_native(data);
+                    bitmap = Bitmap.createBitmap(colors, 0, image_size.height,
+                            image_size.height, image_size.width, Bitmap.Config.ARGB_8888);
+                }
+                int face_x = (int) (face_region[m][0] - face_region[m][2] * 0.2);
+                if (face_x < 0) face_x = 0;
+                int face_y = (int) (face_region[m][1] - face_region[m][3] * 0.2);
+                if (face_y < 0) face_y = 0;
+                int face_width = (int) (face_region[m][2] * 1.4);
+                int face_height = (int) (face_region[m][3] * 1.4);
+                if (face_width > bitmap.getWidth() - face_x)
+                    face_width = bitmap.getWidth() - face_x;
+                if (face_height > bitmap.getHeight() - face_y)
+                    face_height = bitmap.getHeight() - face_y;
+                Bitmap current_photo = Bitmap.createBitmap(bitmap, face_x, face_y, face_width, face_height);
+                recognition_images.add(current_photo);
+                recognition_relation_ids.add(relation_id);
+                if ((int) user_feature.get("is_child") == 1) {
+                    recognition_name.add((String) user_feature.get("name"));
+                } else {
+                    recognition_name.add((String) user_feature.get("name") + user_feature.get("relation"));
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < recognition_images.size(); i++) {
+                            recognition_image_relation.get(recognition_image_num - 1 - i).setText(
+                                    recognition_name.get(recognition_name.size() - 1 - i));
+                            recognition_image_relation.get(recognition_image_num - 1 - i).setVisibility(View.VISIBLE);
+                            recognition_image_view.get(recognition_image_num - 1 - i).setImageBitmap(
+                                    recognition_images.get(recognition_images.size() - 1 - i));
+                            recognition_image_view.get(recognition_image_num - 1 - i).setVisibility(View.VISIBLE);
+                        }
+                    }
+                });
+            }
+            return bitmap;
+        }
+
+        private void clear_recognition_image(){
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    recognition_success.setVisibility(View.INVISIBLE);
+                    text_recognition.setVisibility(View.INVISIBLE);
+                    recognition_name_view.setText(" ");
+                    for (int i = 0; i < notice_num; i++) {
+                        notice_relation_name.get(i).setVisibility(View.INVISIBLE);
+                        notice_relation.get(i).setVisibility(View.INVISIBLE);
+                    }
+                }
+            });
+        }
+
         @Override
         public void run() {
             super.run();
             while(!thread_recognition_stop) {
                 long startTime = System.currentTimeMillis();
+                Date time_now_tmp = new Date();
+                if(time_now_tmp.getTime() - recognition_time > 1000 * 6 && !clear_recognition_image_called){
+                    clear_recognition_image();
+                    clear_recognition_image_called = true;
+                }
+                if(time_now_tmp.getTime() - detect_face_time > 1000 * 60){
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
                 byte[] data;
                 lock.lock();
                 if (!have_new_image) {
@@ -207,11 +369,13 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 int face_count = loadLibraryModule.recognition_face(data, face_region, feature, 0, code_ret);
 
                 String[] user_name = new String[max_face_num];
-                int[] reg_list = new int[max_face_num];
                 float[] score = new float[max_face_num];
                 lock_user_feature.lock();
                 String relation_ids = "";
+                Bitmap bitmap = null;
+                Date time_now = new Date();
                 for (int m = 0; m < face_count; m++) {
+                    detect_face_time = time_now .getTime();
                     float max_score = 0;
                     int max_score_index = -1;
                     for(int i = 0; i < all_user_feature.size(); i++) {
@@ -225,21 +389,19 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                             max_score_index = i;
                         }
                     }
-                    if(max_score_index >= 0) {
-                        Log.e(TAG, "recognition score: " + max_score + " name: "
-                                + all_user_feature.get(max_score_index).get("name")
-                                + " relation: " + all_user_feature.get(max_score_index).get("relation"));
-                    }
+                    Map<String, Object> user_feature = all_user_feature.get(max_score_index);
                     if (max_score >= 0.42) {
-                        if((int)all_user_feature.get(max_score_index).get("is_child") == 1) {
-                            user_name[m] = (String)all_user_feature.get(max_score_index).get("name");
+                        bitmap = update_recognition_image(user_feature, m, data, face_region, bitmap);
+                        recognition_time = time_now.getTime();
+                        clear_recognition_image_called = false;
+                        if((int)user_feature.get("is_child") == 1) {
+                            user_name[m] = (String)user_feature.get("name");
                         } else {
-                            user_name[m] = (String)all_user_feature.get(max_score_index).get("name") +
-                                    " " + (String) all_user_feature.get(max_score_index).get("relation");
+                            user_name[m] = (String)user_feature.get("name") +
+                                    " " + (String) user_feature.get("relation");
                         }
                         Integer current_relation_id =
-                                (Integer)all_user_feature.get(max_score_index).get("relation_id");
-                        Date time_now = new Date();
+                                (Integer)user_feature.get("relation_id");
                         boolean need_upload = false;
                         if(upload_recognition_image_time.containsKey(current_relation_id)) {
                             Long time_delta = time_now.getTime() -
@@ -295,6 +457,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
 
     public class UpdateFeatureThread extends Thread{
         private boolean get_new_message_finish = true;
+        private boolean delete_new_message_finish = true;
         private int max_message_id;
 
         UpdateFeatureThread(RecognitionActivity activity){
@@ -315,7 +478,6 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             this.max_message_id = max_message_id;
         }
 
-
         private void get_all_feature(){
             SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
             Call<ResponseBody> call = service.get_all_person_feature(GlobalParameter.getSid());
@@ -329,9 +491,12 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         int relation_id = feature.optInt("relation_id");
                         String relation = feature.optString("relation");
                         String feature_str = feature.optString("feature");
+                        int person_id = feature.optInt("person_id");
                         int is_child = feature.optInt("is_child");
+                        String head_picture = feature.optString("head_picture");
                         String name = feature.optString("name");
-                        userFeatureDB.addUserFeature(relation_id, relation, feature_str, is_child, name);
+                        userFeatureDB.addUserFeature(
+                                relation_id, relation, feature_str, is_child, person_id, head_picture, name);
                     }
                     setMax_message_id(0);
                     query_user_feature();
@@ -357,19 +522,24 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     String relation = message.optString("relation");
                     String feature_str = message.optString("feature");
                     int is_child = message.optInt("is_child");
+                    int person_id = message.optInt("person_id");
+                    String head_picture = message.optString("head_picture");
                     String name = message.optString("name");
-                    userFeatureDB.addUserFeature(relation_id, relation, feature_str, is_child, name);
+                    userFeatureDB.addUserFeature(
+                            relation_id, relation, feature_str, is_child, person_id, head_picture, name);
                 } else if (message_type.equals("delete")) {
                     int relation_id = message.optInt("relation_id");
                     userFeatureDB.deleteUserFeatureById(relation_id);
-
                 } else if (message_type.equals("update")) {
                     int relation_id = message.optInt("relation_id");
                     String relation = message.optString("relation");
                     String feature_str = message.optString("feature");
                     int is_child = message.optInt("is_child");
+                    int person_id = message.optInt("person_id");
+                    String head_picture = message.optString("head_picture");
                     String name = message.optString("name");
-                    userFeatureDB.updateUserFeature(relation_id, relation, feature_str, is_child, name);
+                    userFeatureDB.updateUserFeature(
+                            relation_id, relation, feature_str, is_child, person_id, head_picture, name);
                 } else {
                     Log.e(TAG, "parseMessage: unknow message type");
                 }
@@ -377,6 +547,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             int max_message_id_local = responseJson.optInt("max_message_id");
             if(delete_message_ids.size() > 0){
                 query_user_feature();
+                delete_new_message_finish = false;
                 delete_message(delete_message_ids, max_message_id_local);
             } else {
                 if(max_message_id_local != max_message_id) {
@@ -388,18 +559,25 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         private void delete_message(ArrayList<Integer> delete_message_ids, int max_message_id_local){
             SimpleHttpClient.ServerAPI service = Utils.getHttpClient(10);
             Call<ResponseBody> call = service.delete_new_message(delete_message_ids, GlobalParameter.getSid());
-            try {
-                Response<ResponseBody> response = call.execute();
-                if (response.code() == 200) {
-                    Log.e(TAG, "delete_message success: " + delete_message_ids);
-                    setMax_message_id(max_message_id_local);
-                } else {
-                    toast("连接网络失败，请稍后再试");
+            call.enqueue(new Callback<ResponseBody>() {
+                @Override
+                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                    if (response.code() == 200) {
+                        Log.e(TAG, "delete_message success: " + delete_message_ids);
+                        setMax_message_id(max_message_id_local);
+                    } else {
+                        toast("连接网络失败，请稍后再试");
+                    }
+                    delete_new_message_finish = true;
                 }
-            } catch (IOException e) {
-                toast("连接网络失败，请稍后再试");
-                e.printStackTrace();
-            }
+
+                @Override
+                public void onFailure(Call<ResponseBody> call, Throwable t) {
+                    toast("连接网络失败，请检查您的网络");
+                    t.printStackTrace();
+                    delete_new_message_finish = true;
+                }
+            });
         }
 
         private void get_new_message(){
@@ -433,7 +611,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 if(max_message_id == -1){
                     get_all_feature();
                 } else {
-                    if (get_new_message_finish) {
+                    if (get_new_message_finish && delete_new_message_finish) {
                         get_new_message_finish = false;
                         get_new_message();
                     } else {
@@ -490,7 +668,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 }
                 String[] filePathSplit = array[j].getName().split("\\.");
                 String user_name = filePathSplit[0];
-                userFeatureDB.addUserFeature(0, "", feature_str, 1, user_name);
+                userFeatureDB.addUserFeature(
+                        0, "", feature_str, 1, 0, "", user_name);
                 File tmp_file = new File(array[j].getParent() + deleted_suffix + "/" + array[j].getName());
                 array[j].renameTo(tmp_file);
                 Log.e(TAG, "registration_local_image success" + array[j].getName());
@@ -504,12 +683,18 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private void query_user_feature(){
         lock_user_feature.lock();
         all_user_feature = userFeatureDB.queryAllUserFeature();
-        lock_user_feature.unlock();
         for(int i = 0; i < all_user_feature.size(); i++) {
+            Integer person_id = (int)all_user_feature.get(i).get("person_id");
+            if(!person_id_to_relation.containsKey(person_id)) {
+                person_id_to_relation.put(person_id, new ArrayList<Map<String, Object>>());
+            }
+            Map<String, Object> user_feature = all_user_feature.get(i);
+            person_id_to_relation.get(person_id).add(user_feature);
             Log.e(TAG, "feature num: " + i + "/" +
-                    all_user_feature.size() + " " + all_user_feature.get(i).get("name") +
-                    " " + all_user_feature.get(i).get("relation"));
+                    all_user_feature.size() + " " + user_feature.get("name") +
+                    " " + user_feature.get("relation"));
         }
+        lock_user_feature.unlock();
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -522,8 +707,46 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             getSupportActionBar().setTitle("返回");
         }
 
+        Date time_now = new Date();
+        detect_face_time = time_now.getTime();
         loadLibraryModule = LoadLibraryModule.getInstance();
         image_view = findViewById(R.id.image_view);
+        image_1 = findViewById(R.id.image_1);
+        image_1_relation = findViewById(R.id.image_1_relation);
+        image_2 = findViewById(R.id.image_2);
+        image_2_relation = findViewById(R.id.image_2_relation);
+        image_3 = findViewById(R.id.image_3);
+        image_3_relation = findViewById(R.id.image_3_relation);
+        recognition_image_view.add(image_1);
+        recognition_image_view.add(image_2);
+        recognition_image_view.add(image_3);
+        recognition_image_relation.add(image_1_relation);
+        recognition_image_relation.add(image_2_relation);
+        recognition_image_relation.add(image_3_relation);
+
+        recognition_success = findViewById(R.id.recognition_success);
+        text_recognition = findViewById(R.id.text_recognition);
+        recognition_success.setVisibility(View.INVISIBLE);
+        text_recognition.setVisibility(View.INVISIBLE);
+        recognition_name_view = findViewById(R.id.recognition_name);
+
+        notice_1 = findViewById(R.id.notice_1);
+        relation_1_text = findViewById(R.id.relation_1_text);
+        notice_2 = findViewById(R.id.notice_2);
+        relation_2_text = findViewById(R.id.relation_2_text);
+        notice_3 = findViewById(R.id.notice_3);
+        relation_3_text = findViewById(R.id.relation_3_text);
+        notice_4 = findViewById(R.id.notice_4);
+        relation_4_text = findViewById(R.id.relation_4_text);
+        notice_relation.add(notice_1);
+        notice_relation.add(notice_2);
+        notice_relation.add(notice_3);
+        notice_relation.add(notice_4);
+        notice_relation_name.add(relation_1_text);
+        notice_relation_name.add(relation_2_text);
+        notice_relation_name.add(relation_3_text);
+        notice_relation_name.add(relation_4_text);
+
         handler = new RecognitionHandler();
         userFeatureDB = new UserFeatureDB(this);
         //userFeatureDB.deleteAllUserFeature();

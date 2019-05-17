@@ -22,12 +22,15 @@ public class UserFeatureDB {
         db = helper.getWritableDatabase();
     }
 
-    public Long addUserFeature(int relation_id, String relation, String feature, int is_child, String name) {
+    public Long addUserFeature(int relation_id, String relation, String feature, int is_child,
+                               int person_id, String head_picture, String name) {
         ContentValues cv = new ContentValues();
         cv.put("relation_id", relation_id);
         cv.put("relation", relation);
         cv.put("feature", feature);
         cv.put("is_child", is_child);
+        cv.put("person_id", person_id);
+        cv.put("head_picture", head_picture);
         cv.put("name", name);
         db.beginTransaction();
         try {
@@ -39,11 +42,14 @@ public class UserFeatureDB {
         }
     }
 
-    public void updateUserFeature(int relation_id, String relation, String feature, int is_child, String name) {
+    public void updateUserFeature(int relation_id, String relation, String feature, int is_child,
+                                  int person_id, String head_picture, String name) {
             ContentValues cv = new ContentValues();
         cv.put("relation", relation);
         cv.put("feature", feature);
         cv.put("is_child", is_child);
+        cv.put("person_id", person_id);
+        cv.put("head_picture", head_picture);
         cv.put("name", name);
         db.beginTransaction();
             try {
@@ -94,6 +100,8 @@ public class UserFeatureDB {
             }
             content.put("feature", feature_float);
             content.put("is_child", cursor.getInt(cursor.getColumnIndex("is_child")));
+            content.put("person_id", cursor.getInt(cursor.getColumnIndex("person_id")));
+            content.put("head_picture", cursor.getString(cursor.getColumnIndex("head_picture")));
             content.put("name", cursor.getString(cursor.getColumnIndex("name")));
             user_feature.add(content);
         }

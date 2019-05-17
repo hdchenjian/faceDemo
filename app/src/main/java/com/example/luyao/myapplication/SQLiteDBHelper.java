@@ -22,6 +22,8 @@ public class SQLiteDBHelper extends SQLiteOpenHelper {
                 "`relation` varchar(64) not null, " +
                 "`feature` text not null, " +
                 "`is_child` integer not null, " +
+                "`person_id` integer not null, " +
+                "`head_picture` varchar(255) not null, " +
                 "`name` varchar(64) not null)");
     }
 

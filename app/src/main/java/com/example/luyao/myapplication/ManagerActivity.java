@@ -183,11 +183,24 @@ public class ManagerActivity extends AppCompatActivity
     }
 
     private DialogInterface.OnClickListener groupDlgClick = new DialogInterface.OnClickListener() {
+        private DialogInterface.OnClickListener mDlgClick = new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                if (which == AlertDialog.BUTTON_POSITIVE) {
+                    deleteGroup((int)group_index_to_info.get(group_operate_position).get("group_id"));
+                }
+            }
+        };
+
         public void onClick(DialogInterface dialog, int which) {
             if (which == AlertDialog.BUTTON_NEGATIVE) {
                 updateGroupClient();
             } else if (which == AlertDialog.BUTTON_NEUTRAL) {
-                deleteGroup((int)group_index_to_info.get(group_operate_position).get("group_id"));
+                AlertDialog.Builder builder = new AlertDialog.Builder(ManagerActivity.this);
+                builder.setTitle("");
+                builder.setMessage("确定删除该班级吗?");
+                builder.setPositiveButton("确定", mDlgClick);
+                builder.setNegativeButton("取消", mDlgClick);
+                builder.show();
             } else {
             }
         }

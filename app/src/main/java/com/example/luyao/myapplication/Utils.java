@@ -78,9 +78,13 @@ public class Utils {
 
             } else {
                 String error_str = response.errorBody().string();
-                //error_detail = error_detail.replaceAll("\"", "\\\\\"");
+                //error_str = error_str.replaceAll("\"", "\\\\\"");
                 responseJson = new JSONObject(error_str);
-                Log.d(TAG, responseJson.toString());
+                //Log.e(TAG, responseJson.toString());
+                if(responseJson.optInt("code") == 1003){
+                    GlobalParameter.setSessionExpired(true);
+                    android.os.Process.killProcess(android.os.Process.myPid());
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
