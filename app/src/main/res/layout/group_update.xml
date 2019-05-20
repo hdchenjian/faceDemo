@@ -2,7 +2,7 @@
               android:layout_width="wrap_content"
               android:layout_height="wrap_content"
               android:gravity="center"
-              android:background="@android:color/transparent"
+              android:background="#fff"
               android:layout_centerHorizontal="true"
               android:orientation="vertical">
   <TextView
@@ -12,7 +12,7 @@
       android:background="#ccc"
       android:gravity="center"
       android:text="更新班级信息"
-      android:textColor="@android:color/white"
+      android:textColor="#000"
       android:textSize="20sp" />
 
   <LinearLayout
@@ -27,9 +27,9 @@
         android:id="@+id/text_name_title"
         android:layout_width="wrap_content"
         android:layout_height="30dp"
-        android:background="#ccc"
-        android:text="班级名字"
-        android:textColor="@android:color/white"
+        android:background="#fff"
+        android:text="班级名字:"
+        android:textColor="#000"
         android:textSize="20sp" />
 
     <EditText
@@ -55,9 +55,9 @@
         android:id="@+id/text_sort_title"
         android:layout_width="wrap_content"
         android:layout_height="30dp"
-        android:background="#ccc"
-        android:text="排序"
-        android:textColor="@android:color/white"
+        android:background="#fff"
+        android:text="排序:"
+        android:textColor="#000"
         android:textSize="20sp" />
 
     <EditText
@@ -69,9 +69,6 @@
         android:ems="6"
         android:textSize="18sp" />
   </LinearLayout>
-
-
-
 
   <LinearLayout
       android:layout_width="wrap_content"

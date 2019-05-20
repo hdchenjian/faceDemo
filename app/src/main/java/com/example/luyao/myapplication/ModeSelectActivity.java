@@ -15,6 +15,7 @@ public class ModeSelectActivity extends AppCompatActivity {
     private final static String TAG = ModeSelectActivity.class.getCanonicalName();
     private Button button_mode_manager;
     private Button button_mode_recognition;
+    private Button button_exit;
 
     private static final int REQUEST_Recognition = 2;
     private static final int REQUEST_Manager = 3;
@@ -65,6 +66,15 @@ public class ModeSelectActivity extends AppCompatActivity {
             public void onClick(View v) {
                 button_mode_recognition.setEnabled(false);
                 start_recognition();
+            }
+        });
+
+        button_exit = findViewById(R.id.button_exit);
+        button_exit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                button_exit.setEnabled(false);
+                finish();
             }
         });
     }

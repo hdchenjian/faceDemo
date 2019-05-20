@@ -217,8 +217,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             super();
         }
 
-        private Bitmap  update_recognition_image(Map<String, Object> user_feature,
-                                              int m, byte[] data, int[][] face_region, Bitmap bitmap){
+        private Bitmap update_recognition_image(Map<String, Object> user_feature,
+                                                int m, byte[] data, int[][] face_region, Bitmap bitmap){
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -231,8 +231,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                                 (String) user_feature.get("name") + user_feature.get("relation"));
                     }
 
-                    int current_person_id = (int)user_feature.get("person_id");;
-                    if(current_person_id != last_recognition_person_id) {
+                    int current_person_id = (int)user_feature.get("person_id");
+                    if(true || current_person_id != last_recognition_person_id) {
                         for (int i = 0; i < notice_num; i++) {
                             notice_relation_name.get(i).setVisibility(View.INVISIBLE);
                             notice_relation.get(i).setVisibility(View.INVISIBLE);
@@ -300,12 +300,10 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     @Override
                     public void run() {
                         for (int i = 0; i < recognition_images.size(); i++) {
-                            recognition_image_relation.get(recognition_image_num - 1 - i).setText(
-                                    recognition_name.get(recognition_name.size() - 1 - i));
-                            recognition_image_relation.get(recognition_image_num - 1 - i).setVisibility(View.VISIBLE);
-                            recognition_image_view.get(recognition_image_num - 1 - i).setImageBitmap(
-                                    recognition_images.get(recognition_images.size() - 1 - i));
-                            recognition_image_view.get(recognition_image_num - 1 - i).setVisibility(View.VISIBLE);
+                            recognition_image_relation.get(i).setText(recognition_name.get(recognition_name.size() - 1 - i));
+                            recognition_image_relation.get(i).setVisibility(View.VISIBLE);
+                            recognition_image_view.get(i).setImageBitmap(recognition_images.get(recognition_images.size() - 1 - i));
+                            recognition_image_view.get(i).setVisibility(View.VISIBLE);
                         }
                     }
                 });
@@ -530,6 +528,9 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 } else if (message_type.equals("delete")) {
                     int relation_id = message.optInt("relation_id");
                     userFeatureDB.deleteUserFeatureById(relation_id);
+                } else if (message_type.equals("sync")) {
+                    setMax_message_id(-1);
+                    return;
                 } else if (message_type.equals("update")) {
                     int relation_id = message.optInt("relation_id");
                     String relation = message.optString("relation");
@@ -683,6 +684,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private void query_user_feature(){
         lock_user_feature.lock();
         all_user_feature = userFeatureDB.queryAllUserFeature();
+        person_id_to_relation.clear();
         for(int i = 0; i < all_user_feature.size(); i++) {
             Integer person_id = (int)all_user_feature.get(i).get("person_id");
             if(!person_id_to_relation.containsKey(person_id)) {

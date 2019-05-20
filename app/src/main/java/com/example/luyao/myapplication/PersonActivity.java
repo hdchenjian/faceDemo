@@ -61,7 +61,7 @@ public class PersonActivity extends AppCompatActivity{
                 relation_delete_position = position;
                 AlertDialog.Builder builder = new AlertDialog.Builder(PersonActivity.this);
                 builder.setTitle("");
-                builder.setMessage("您确定删除吗?");
+                builder.setMessage("您确定删除该家长吗?");
                 builder.setPositiveButton("确定", relationDlgClick);
                 builder.setNegativeButton("取消", relationDlgClick);
                 builder.show();
@@ -262,7 +262,7 @@ public class PersonActivity extends AppCompatActivity{
     public void deletePersonClick() {
         AlertDialog.Builder builder = new AlertDialog.Builder(PersonActivity.this);
         builder.setTitle("");
-        builder.setMessage("您确定删除吗?");
+        builder.setMessage("您确定删除该学生吗?");
         builder.setPositiveButton("确定", mDlgClick);
         builder.setNegativeButton("取消", mDlgClick);
         builder.show();

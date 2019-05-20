@@ -1,38 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_margin="16dp"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_margin="60dp"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:orientation="vertical"
               android:layout_centerHorizontal="true">
 
-  <LinearLayout
-      android:orientation="vertical"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:paddingTop="32dp"
-      android:paddingLeft="32dp"
-      android:paddingRight="32dp">
-
     <Button
         android:id="@+id/button_mode_manager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="25dip"
+        android:layout_margin="20dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:minHeight="150dp"
-        android:text="@string/mode_manager"
-        />
+        android:background="@drawable/button_manager"
+        android:textSize="20sp"
+        android:text="@string/mode_manager" />
 
     <Button
         android:id="@+id/button_mode_recognition"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="25dip"
+        android:layout_margin="20dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:minHeight="150dp"
+        android:background="@drawable/button_recognition"
+        android:textSize="20sp"
         android:text="@string/mode_recognition" />
-  </LinearLayout>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="32dp"
+        android:paddingLeft="32dp"
+        android:paddingRight="32dp">
+
+        <Button
+            android:id="@+id/button_exit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/button_default"
+            android:textColor="#808080"
+            android:textSize="18sp"
+            android:text="退出" />
+    </LinearLayout>
+
 </LinearLayout>

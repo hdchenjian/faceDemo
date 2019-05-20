@@ -43,10 +43,22 @@
         android:layout_height="wrap_content"
         android:text="@string/login_show_password" />
 
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="32dp"
+        android:paddingLeft="32dp"
+        android:paddingRight="32dp">
+
+
+  </LinearLayout>
     <Button
         android:id="@+id/button_login"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/button_default"
         android:text="@string/login_button" />
   </LinearLayout>
 </LinearLayout>

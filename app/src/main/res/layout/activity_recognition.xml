@@ -5,7 +5,8 @@
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:orientation="vertical"
-              android:layout_centerHorizontal="true">
+    android:background="#fff"
+    android:layout_centerHorizontal="true">
 
   <LinearLayout
       android:orientation="vertical"
@@ -104,8 +105,8 @@
 
       <ImageView
           android:id="@+id/recognition_success"
-          android:layout_width="30dp"
-          android:layout_height="30dp"
+          android:layout_width="25dp"
+          android:layout_height="25dp"
           android:layout_centerVertical="true"
           android:paddingLeft="5dp"
           android:src="@drawable/recognition_success" />
@@ -113,15 +114,15 @@
         <TextView
             android:id="@+id/text_recognition"
             android:layout_width="wrap_content"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_centerVertical="true"
             android:layout_marginLeft="0dp"
             android:layout_marginTop="20dp"
             android:layout_toRightOf="@id/recognition_success"
             android:background="#fff"
             android:text="识别成功"
-            android:textColor="@android:color/black"
-            android:textSize="20sp" />
+            android:textColor="#ff0092f4"
+            android:textSize="15sp" />
     </RelativeLayout>
 
 
@@ -147,20 +148,22 @@
 
       <ImageView
           android:id="@+id/notice_image"
-          android:layout_width="30dp"
-          android:layout_height="30dp"
+          android:layout_width="20dp"
+          android:layout_height="20dp"
           android:layout_centerVertical="true"
           android:paddingLeft="10dp"
           android:src="@drawable/notice" />
-      <TextView
-          android:id="@+id/recognition_notice"
-          android:layout_toRightOf="@id/notice_image"
-          android:layout_width="match_parent"
-          android:layout_height="30dp"
-          android:background="#fff"
-          android:text="已微信通知以下人员:"
-          android:textColor="@android:color/black"
-          android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/recognition_notice"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:layout_toRightOf="@id/notice_image"
+            android:background="#fff"
+            android:text="已微信通知以下人员:"
+            android:textAlignment="gravity"
+            android:textColor="#808080"
+            android:textSize="14sp" />
     </RelativeLayout>
 
     <RelativeLayout
@@ -190,9 +193,6 @@
             android:layout_height="30dp"
             android:layout_alignWithParentIfMissing="false"
             android:layout_below="@id/notice_1"
-            android:layout_centerInParent="true"
-            android:layout_centerHorizontal="true"
-            android:layout_centerVertical="true"
             android:layout_marginLeft="0dp"
             android:background="#fff"
             android:gravity="center"
@@ -222,9 +222,6 @@
             android:layout_height="30dp"
             android:layout_alignWithParentIfMissing="false"
             android:layout_below="@id/notice_2"
-            android:layout_centerInParent="false"
-            android:layout_centerHorizontal="true"
-            android:layout_centerVertical="true"
             android:layout_marginLeft="0dp"
             android:background="#fff"
             android:gravity="center"
@@ -254,9 +251,6 @@
             android:layout_height="30dp"
             android:layout_alignWithParentIfMissing="false"
             android:layout_below="@id/notice_3"
-            android:layout_centerInParent="false"
-            android:layout_centerHorizontal="true"
-            android:layout_centerVertical="true"
             android:layout_marginLeft="0dp"
             android:background="#fff"
             android:gravity="center"
@@ -286,9 +280,6 @@
             android:layout_height="30dp"
             android:layout_alignWithParentIfMissing="false"
             android:layout_below="@id/notice_4"
-            android:layout_centerInParent="false"
-            android:layout_centerHorizontal="true"
-            android:layout_centerVertical="true"
             android:layout_marginLeft="0dp"
             android:background="#fff"
             android:gravity="center"
