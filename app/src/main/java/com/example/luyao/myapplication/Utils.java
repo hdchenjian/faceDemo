@@ -69,7 +69,7 @@ public class Utils {
     public static final JSONObject parseResponse(Response<ResponseBody> response, String TAG) {
         int code = response.code();
         Log.d(TAG, code + response.toString());
-        JSONObject responseJson = null;
+        JSONObject responseJson = new JSONObject();
         try {
             if (code == 200) {
                 String response_str = response.body().string();

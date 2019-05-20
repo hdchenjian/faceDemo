@@ -233,7 +233,7 @@ public class PersonActivity extends AppCompatActivity{
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 JSONObject responseJson = Utils.parseResponse(response, TAG);
                 if (response.code() == 200) {
-                    getPersonInfo();
+                    finish();
                     toast("删除成功");
                 } else {
                     toast("连接网络失败，请稍后再试");
