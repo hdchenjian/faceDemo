@@ -28,10 +28,6 @@
 
         <activity android:name="com.example.luyao.myapplication.ModeSelectActivity" android:theme="@style/AppTheme" />
         <activity android:name="com.example.luyao.myapplication.RecognitionActivity" android:theme="@style/AppTheme" />
-        <activity android:name="com.example.luyao.myapplication.ManagerActivity" android:theme="@style/AppTheme" />
-        <activity android:name="com.example.luyao.myapplication.GroupActivity" android:theme="@style/AppTheme" />
-        <activity android:name="com.example.luyao.myapplication.PersonActivity" android:theme="@style/AppTheme" />
-
     </application>
 
 </manifest>

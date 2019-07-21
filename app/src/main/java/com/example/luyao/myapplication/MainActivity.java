@@ -21,15 +21,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import okhttp3.ResponseBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-
 import com.iim.recognition.caffe.LoadLibraryModule;
-
-import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,12 +30,13 @@ public class MainActivity extends AppCompatActivity {
     private static final int RC_HANDLE_CAMERA_PERM_RGB = 1;
     private static final int RC_HANDLE_READ_EXTERNAL_STORAGE = 2;
     private static final int RC_HANDLE_WRITE_EXTERNAL_STORAGE = 3;
-    private static final int REQUEST_MODE_SELECT = 1;
 
-    private EditText user_phone_text;
-    private EditText user_password_test;
-    private Button button_login;
-    private AppCompatCheckBox password_checkbox;
+    private Button button_mode_manager;
+    private Button button_mode_recognition;
+    private Button button_exit;
+
+    private static final int REQUEST_Recognition = 2;
+    private static final int REQUEST_Manager = 3;
 
     protected void toast(final String msg) {
         runOnUiThread(new Runnable() {
@@ -54,112 +47,64 @@ public class MainActivity extends AppCompatActivity {
             });
     }
 
+    private void start_recognition(){
+        Intent intent = new Intent(this, RecognitionActivity.class);
+        startActivityForResult(intent, REQUEST_Recognition);
+    }
+
+    private void start_manager(){
+        Intent intent = new Intent(this, RegistrationActivity.class);
+        startActivityForResult(intent, REQUEST_Manager);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
-        user_phone_text = findViewById(R.id.user_phone);
-        user_password_test = findViewById(R.id.user_password);
-        button_login = findViewById(R.id.button_login);
+        setContentView(R.layout.activity_mode_select);
 
-        password_checkbox = (AppCompatCheckBox) findViewById(R.id.password_checkbox);
-        password_checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                    if (!isChecked) {
-                        user_password_test.setTransformationMethod(PasswordTransformationMethod.getInstance());
-                    } else {
-                        user_password_test.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-                    }
-                }
-            });
+        button_mode_manager = findViewById(R.id.button_mode_manager);
+        button_mode_manager.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                button_mode_manager.setEnabled(false);
+                start_manager();
+            }
+        });
 
-        button_login.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Log.d(TAG, "Login");
-                    button_login.setEnabled(false);
-                    initDnn();
-                    String user_phone_str = user_phone_text.getText().toString();
-                    String password_str = user_password_test.getText().toString();
-                    if(user_phone_str.equals("") || password_str.equals("")) {
-                        toast("请填写手机号和密码");
-                        button_login.setEnabled(true);
-                        return;
-                    }
-                    SharedPreferences user_phone_password = getSharedPreferences("user_phone_password", 0);
-                    SharedPreferences.Editor user_phone_password_editor = user_phone_password.edit();
-                    user_phone_password_editor.putString("phone", user_phone_str);
-                    user_phone_password_editor.putString("password", password_str);
-                    user_phone_password_editor.commit();
-                    Log.d(TAG, "Login: " + user_phone_str + " " + password_str);
-                    login(user_phone_str, Utils.md5(password_str));
+        button_mode_recognition = findViewById(R.id.button_mode_recognition);
+        button_mode_recognition.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                button_mode_recognition.setEnabled(false);
+                start_recognition();
+            }
+        });
 
-                }
-            });
-        SharedPreferences user_phone_password = getSharedPreferences("user_phone_password", 0);
-        String user_phone_str = user_phone_password.getString("phone", "");
-        String user_password_str = user_phone_password.getString("password", "");
-        user_phone_text.setText(user_phone_str);
-        user_password_test.setText(user_password_str);
-    }
-
-    private void start_mode_select(){
-        Intent intent = new Intent(this, ModeSelectActivity.class);
-        startActivityForResult(intent, REQUEST_MODE_SELECT);
+        button_exit = findViewById(R.id.button_exit);
+        button_exit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                button_exit.setEnabled(false);
+                finish();
+            }
+        });
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_MODE_SELECT) {
+        if (requestCode == REQUEST_Recognition) {
             if (resultCode == RESULT_OK) {
-                Log.e(TAG, "MODE_SELECT finish");
+                Log.e(TAG, "Recognition finish");
             }
+            button_mode_recognition.setEnabled(true);
+        } else if (requestCode == REQUEST_Manager) {
+            if (resultCode == RESULT_OK) {
+                Log.e(TAG, "Manager finish");
+            }
+            button_mode_manager.setEnabled(true);
         } else {
             Log.e(TAG, "Unknow error");
         }
-    }
-
-    private int login(String user_phone, String password) {
-        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
-        String mac = Utils.getMac(this).replace(":", "");
-        Call<ResponseBody> call = service.login(user_phone, password, mac);
-        call.enqueue(new Callback<ResponseBody>() {
-                @Override
-                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                    JSONObject responseJson = Utils.parseResponse(response, TAG);
-                    if (response.code() == 200) {
-                        Log.e(TAG, responseJson.optString("organization_id"));
-                        GlobalParameter.setOrganization_id(responseJson.optInt("organization_id"));
-                        GlobalParameter.setSid(responseJson.optString("sid"));
-                    } else {
-                        //toast("连接网络失败，请稍后再试");
-                        toast(responseJson.optString("detail"));
-                    }
-                    runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                button_login.setEnabled(true);
-                                if(GlobalParameter.getSid() != null && GlobalParameter.getSid().length() == 32) {
-                                    start_mode_select();
-                                }
-                            }
-                        });
-                }
-
-                @Override
-                public void onFailure(Call<ResponseBody> call, Throwable t) {
-                    toast("连接网络失败，请检查您的网络");
-                    t.printStackTrace();
-                    runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                button_login.setEnabled(true);
-                            }
-                        });
-                }
-            });
-        return 0;
     }
 
     private void initDnn() {

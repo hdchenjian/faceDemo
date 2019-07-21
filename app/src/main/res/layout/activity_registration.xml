@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_margin="16dp"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:layout_centerHorizontal="true">
+
+  <LinearLayout
+      android:orientation="vertical"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingTop="32dp"
+      android:paddingLeft="32dp"
+      android:paddingRight="32dp">
+
+    <ImageView
+        android:id="@+id/image_registration"
+        android:layout_height="120dp"
+        android:layout_width="96dp"
+        android:layout_gravity="center_horizontal" />
+
+    <EditText
+        android:id="@+id/user_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:maxLines="1"
+        android:inputType="text"
+        android:hint="姓名" />
+
+    <Button
+        android:id="@+id/button_take_photo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/button_default"
+        android:text="拍照" />
+
+    <Button
+        android:id="@+id/button_registration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/button_default"
+        android:text="注册" />
+  </LinearLayout>
+</LinearLayout>

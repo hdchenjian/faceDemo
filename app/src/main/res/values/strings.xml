@@ -7,6 +7,6 @@
     <string name="login_button">登录</string>
     <string name="login_show_password">显示密码</string>
 
-    <string name="mode_manager">管理模式</string>
+    <string name="mode_manager">注册模式</string>
     <string name="mode_recognition">识别模式</string>
 </resources>
