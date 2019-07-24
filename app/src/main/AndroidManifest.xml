@@ -26,7 +26,8 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.example.luyao.myapplication.ModeSelectActivity" android:theme="@style/AppTheme" />
+        <activity android:name="com.example.luyao.myapplication.RegistrationActivity" android:theme="@style/AppTheme" />
+        <activity android:name="com.example.luyao.myapplication.TakePhotoActivity" android:theme="@style/AppTheme" />
         <activity android:name="com.example.luyao.myapplication.RecognitionActivity" android:theme="@style/AppTheme" />
     </application>
 

@@ -1,10 +1,12 @@
 package com.example.luyao.myapplication;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -12,6 +14,10 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.iim.recognition.caffe.LoadLibraryModule;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class RegistrationActivity extends AppCompatActivity {
 
@@ -23,6 +29,8 @@ public class RegistrationActivity extends AppCompatActivity {
     private Button button_take_photo;
     private ImageView image_registration;
     private LoadLibraryModule loadLibraryModule;
+    Bitmap bitmap_photo = null;
+    private UserFeatureDB userFeatureDB;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +43,7 @@ public class RegistrationActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("返回");
         }
 
+        userFeatureDB = new UserFeatureDB(this);
         user_name = findViewById(R.id.user_name);
         button_registration = findViewById(R.id.button_registration);
         button_take_photo = findViewById(R.id.button_take_photo);
@@ -51,7 +60,13 @@ public class RegistrationActivity extends AppCompatActivity {
                     button_registration.setEnabled(true);
                     return;
                 }
+                if(bitmap_photo == null){
+                    toast("请拍摄一张照片");
+                    button_registration.setEnabled(true);
+                    return;
+                }
                 Log.d(TAG, "Login: " + user_name_str + " ");
+                registration_image(user_name_str);
             }
         });
 
@@ -67,9 +82,43 @@ public class RegistrationActivity extends AppCompatActivity {
 
         if (loadLibraryModule == null) {
             loadLibraryModule = LoadLibraryModule.getInstance();
-            loadLibraryModule.recognition_start();
+            //loadLibraryModule.recognition_start();
         }
     }
+
+    private void registration_image(String user_name){
+        int feature_length = 512;
+        int[] face_region = new int[4];
+        float[] feature = new float[feature_length];
+        long[] code_ret = new long[1];
+
+        byte[] byteArray = Utils.bitmapToByte(bitmap_photo);
+        /*
+        try {
+            FileOutputStream out = new FileOutputStream("/sdcard/A/bitmap1.png");
+            bitmap_photo.compress(Bitmap.CompressFormat.PNG, 100, out);
+            out.close();
+        }catch (IOException e) {
+            e.printStackTrace();
+        }*/
+        int face_count = loadLibraryModule.recognition_face(byteArray, face_region, feature, code_ret);
+        if(face_count != 1 || code_ret[0] != 1000){
+            toast("注册失败");
+        } else {
+            toast("注册成功");
+            String feature_str = "";
+            for(int kk = 0; kk < feature_length; kk++){
+                feature_str += String.valueOf(feature[kk]) +",";
+            }
+            int max_id = userFeatureDB.queryMaxId();
+            userFeatureDB.addUserFeature(
+                    max_id + 1, "", feature_str, 1, 0, "", user_name);
+        }
+        button_registration.setEnabled(true);
+        bitmap_photo = null;
+        image_registration.setImageResource(android.R.color.transparent);
+    }
+
     private void start_take_photo() {
         Intent intent = new Intent(this, TakePhotoActivity.class);
         startActivityForResult(intent, REQUEST_Taken_Photo);
@@ -78,20 +127,10 @@ public class RegistrationActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_Taken_Photo) {
             if (resultCode == RESULT_OK) {
-                String user_name = data.getStringExtra("user_name");
-                byte[] bitmap_photo = data.getByteArrayExtra("photo");
-
-                int feature_length = 512;
-                int[] face_region = new int[4];
-                float[] feature = new float[feature_length];
-                long[] code_ret = new long[1];
-                int face_count = loadLibraryModule.recognition_face(bitmap_photo, face_region, feature, code_ret);
-                if(face_count != 1 || code_ret[0] != 1000){
-                    toast("注册失败");
-                } else {
-                    toast("注册成功");
-                }
+                bitmap_photo = GlobalParameter.getRegistration_image();
+                image_registration.setImageBitmap(bitmap_photo);
             }
+            button_take_photo.setEnabled(true);
         }
     }
 
@@ -129,8 +168,18 @@ public class RegistrationActivity extends AppCompatActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                this.finish();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 }

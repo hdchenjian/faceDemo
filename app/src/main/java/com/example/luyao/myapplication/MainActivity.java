@@ -26,6 +26,7 @@ import com.iim.recognition.caffe.LoadLibraryModule;
 public class MainActivity extends AppCompatActivity {
 
     private LoadLibraryModule loadLibraryModule;
+    private InitNetworkThread initNetworkThread;
     private final static String TAG = MainActivity.class.getCanonicalName();
     private static final int RC_HANDLE_CAMERA_PERM_RGB = 1;
     private static final int RC_HANDLE_READ_EXTERNAL_STORAGE = 2;
@@ -88,6 +89,12 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
         });
+
+        button_mode_manager.setEnabled(false);
+        button_mode_recognition.setEnabled(false);
+        initNetworkThread = new InitNetworkThread();
+        initNetworkThread.start();
+        Log.e(TAG, "oncreate finish");
     }
 
     @Override
@@ -138,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, permissions, RC_HANDLE_WRITE_EXTERNAL_STORAGE);
             return;
         }
-        initDnn();
+        //initDnn();
     }
 
     @Override
@@ -169,6 +176,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         Log.e(TAG, "lifecycle: onDestroy");
+        if (initNetworkThread != null) {
+            try {
+                initNetworkThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         super.onDestroy();
     }
 
@@ -231,4 +245,24 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
+    public class InitNetworkThread extends Thread {
+        public InitNetworkThread() {
+            super();
+        }
+
+        @Override
+        public void run() {
+            initDnn();
+            Log.e(TAG, "initDnn over ");
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    button_mode_manager.setEnabled(true);
+                    button_mode_recognition.setEnabled(true);
+                }
+            });
+
+        }
+    }
 }

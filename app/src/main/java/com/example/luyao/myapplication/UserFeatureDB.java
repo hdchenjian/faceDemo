@@ -82,6 +82,17 @@ public class UserFeatureDB {
             }
     }
 
+    public int queryMaxId() {
+        Cursor cursor = db.rawQuery(
+                "select * from " + SQLiteDBHelper.TABLE_NAME + " order by relation_id desc limit 1", new String[] {});
+        int max_id = 1000;
+        while (cursor.moveToNext()) {
+            max_id = cursor.getInt(cursor.getColumnIndex("relation_id"));
+        }
+        cursor.close();
+        return max_id;
+    }
+
     public List<Map<String, Object>> queryAllUserFeature() {
         ArrayList<Map<String, Object>> user_feature = new ArrayList<>();
         Cursor cursor = db.rawQuery(

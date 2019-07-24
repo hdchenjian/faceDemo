@@ -2,6 +2,8 @@ package com.example.luyao.myapplication;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -12,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -32,6 +35,47 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 
 public class Utils {
+    public static final byte[] bitmapToByte(Bitmap bitmap)
+    {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+        byte[] byteArray = stream.toByteArray();
+        //bitmap.recycle();
+        return byteArray;
+    }
+
+    public static final Bitmap rotateBitmap(int angle, Bitmap bitmap)
+    {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+
+        Bitmap resizedBitmap = Bitmap.createBitmap(bitmap, 0, 0,
+                bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        if (resizedBitmap != bitmap && bitmap != null && !bitmap.isRecycled())
+        {
+            bitmap.recycle();
+            bitmap = null;
+        }
+
+        return resizedBitmap;
+    }
+
+    public static final Bitmap rotateResizeBitmap(int angle, Bitmap bitmap)
+    {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+
+        Bitmap resizedBitmap = Bitmap.createBitmap(bitmap, 0, 0,
+                bitmap.getWidth() - 640, bitmap.getHeight(), matrix, true);
+        if (resizedBitmap != bitmap && bitmap != null && !bitmap.isRecycled())
+        {
+            bitmap.recycle();
+            bitmap = null;
+        }
+
+        return resizedBitmap;
+    }
+
     public static final SimpleHttpClient.ServerAPI getHttpClient(int timeout) {
         final OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .connectTimeout(timeout, TimeUnit.SECONDS)
