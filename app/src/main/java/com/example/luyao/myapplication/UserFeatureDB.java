@@ -22,14 +22,10 @@ public class UserFeatureDB {
         db = helper.getWritableDatabase();
     }
 
-    public Long addUserFeature(int relation_id, String relation, String feature, int is_child,
-                               int person_id, String head_picture, String name) {
+    public Long addUserFeature(int person_id, String feature, String head_picture, String name) {
         ContentValues cv = new ContentValues();
-        cv.put("relation_id", relation_id);
-        cv.put("relation", relation);
-        cv.put("feature", feature);
-        cv.put("is_child", is_child);
         cv.put("person_id", person_id);
+        cv.put("feature", feature);
         cv.put("head_picture", head_picture);
         cv.put("name", name);
         db.beginTransaction();
@@ -42,30 +38,27 @@ public class UserFeatureDB {
         }
     }
 
-    public void updateUserFeature(int relation_id, String relation, String feature, int is_child,
-                                  int person_id, String head_picture, String name) {
+    public void updateUserFeature(int person_id, String feature, String head_picture, String name) {
             ContentValues cv = new ContentValues();
-        cv.put("relation", relation);
-        cv.put("feature", feature);
-        cv.put("is_child", is_child);
         cv.put("person_id", person_id);
+        cv.put("feature", feature);
         cv.put("head_picture", head_picture);
         cv.put("name", name);
         db.beginTransaction();
             try {
-                db.update(SQLiteDBHelper.TABLE_NAME, cv, "relation_id = ?",
-                        new String[]{String.valueOf(relation_id)});
+                db.update(SQLiteDBHelper.TABLE_NAME, cv, "person_id = ?",
+                        new String[]{String.valueOf(person_id)});
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
             }
     }
 
-    public void deleteUserFeatureById(int relation_id) {
+    public void deleteUserFeatureById(int person_id) {
             db.beginTransaction();
             try {
-                db.delete(SQLiteDBHelper.TABLE_NAME, "relation_id = ?",
-                        new String[]{String.valueOf(relation_id)});
+                db.delete(SQLiteDBHelper.TABLE_NAME, "person_id = ?",
+                        new String[]{String.valueOf(person_id)});
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
@@ -84,10 +77,10 @@ public class UserFeatureDB {
 
     public int queryMaxId() {
         Cursor cursor = db.rawQuery(
-                "select * from " + SQLiteDBHelper.TABLE_NAME + " order by relation_id desc limit 1", new String[] {});
+                "select * from " + SQLiteDBHelper.TABLE_NAME + " order by person_id desc limit 1", new String[] {});
         int max_id = 1000;
         while (cursor.moveToNext()) {
-            max_id = cursor.getInt(cursor.getColumnIndex("relation_id"));
+            max_id = cursor.getInt(cursor.getColumnIndex("person_id"));
         }
         cursor.close();
         return max_id;
@@ -96,12 +89,9 @@ public class UserFeatureDB {
     public List<Map<String, Object>> queryAllUserFeature() {
         ArrayList<Map<String, Object>> user_feature = new ArrayList<>();
         Cursor cursor = db.rawQuery(
-                "select * from " + SQLiteDBHelper.TABLE_NAME + " order by relation_id asc", new String[] {});
+                "select * from " + SQLiteDBHelper.TABLE_NAME + " order by person_id asc", new String[] {});
         while (cursor.moveToNext()) {
             HashMap<String, Object> content = new HashMap<>();
-            content.put("relation_id", cursor.getInt(cursor.getColumnIndex("relation_id")));
-            content.put("relation", cursor.getString(cursor.getColumnIndex("relation")));
-
             String feature_str = cursor.getString(cursor.getColumnIndex("feature"));
             String[] feature_str_list = feature_str.split(",");
             int feature_length = 512;
@@ -110,7 +100,6 @@ public class UserFeatureDB {
                 feature_float[i] = Float.parseFloat(feature_str_list[i]);
             }
             content.put("feature", feature_float);
-            content.put("is_child", cursor.getInt(cursor.getColumnIndex("is_child")));
             content.put("person_id", cursor.getInt(cursor.getColumnIndex("person_id")));
             content.put("head_picture", cursor.getString(cursor.getColumnIndex("head_picture")));
             content.put("name", cursor.getString(cursor.getColumnIndex("name")));

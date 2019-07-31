@@ -23,6 +23,13 @@ import android.widget.Toast;
 
 import com.iim.recognition.caffe.LoadLibraryModule;
 
+import org.json.JSONObject;
+
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class MainActivity extends AppCompatActivity {
 
     private LoadLibraryModule loadLibraryModule;
@@ -38,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_Recognition = 2;
     private static final int REQUEST_Manager = 3;
+    private boolean getAllPermissionSuccess = false;
 
     protected void toast(final String msg) {
         runOnUiThread(new Runnable() {
@@ -90,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        button_mode_manager.setEnabled(false);
+        //button_mode_manager.setEnabled(false);
         button_mode_recognition.setEnabled(false);
         initNetworkThread = new InitNetworkThread();
         initNetworkThread.start();
@@ -146,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         //initDnn();
+        getAllPermissionSuccess = true;
     }
 
     @Override
@@ -253,8 +262,17 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void run() {
+            while(!getAllPermissionSuccess) {
+                try {
+                    Thread.sleep(100);
+                    Log.e(TAG, "waiting for getAllPermissionSuccess");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
             initDnn();
             Log.e(TAG, "initDnn over ");
+            login("15919460519", Utils.md5("123456"));
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -264,5 +282,35 @@ public class MainActivity extends AppCompatActivity {
             });
 
         }
+    }
+
+    private int login(String user_phone, String password) {
+        SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
+        String mac = Utils.getMac(this).replace(":", "");
+        Call<ResponseBody> call = service.login(user_phone, password, mac);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                JSONObject responseJson = Utils.parseResponse(response, TAG);
+                if (response.code() == 200) {
+                    GlobalParameter.setOrganization_id(responseJson.optInt("organization_id"));
+                    GlobalParameter.setSid(responseJson.optString("sid"));
+                } else {
+                    //toast("连接网络失败，请稍后再试");
+                    toast(responseJson.optString("detail"));
+                }
+                if(GlobalParameter.getOrganization_id() > 0 &&
+                        GlobalParameter.getSid() != null && GlobalParameter.getSid().length() == 32) {
+                    toast("登录成功");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                toast("连接网络失败，请检查您的网络");
+                t.printStackTrace();
+            }
+        });
+        return 0;
     }
 }

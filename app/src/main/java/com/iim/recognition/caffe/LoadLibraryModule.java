@@ -18,14 +18,10 @@ public class LoadLibraryModule {
     public LoadLibraryModule()
     {
         System.loadLibrary("GLES_mali");
-
         //System.loadLibrary("c++_shared");
-
         //System.loadLibrary("arm_compute");
-
         //System.loadLibrary("arm_compute_core");
         //System.loadLibrary("arm_compute_graph");
-
         System.loadLibrary("dnn_network");
     }
 

@@ -18,11 +18,8 @@ public class SQLiteDBHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("create table if not exists user_feature " +
-                "(`relation_id` integer primary key not null, " +
-                "`relation` varchar(64) not null, " +
+                "(`person_id` integer primary key not null, " +
                 "`feature` text not null, " +
-                "`is_child` integer not null, " +
-                "`person_id` integer not null, " +
                 "`head_picture` varchar(255) not null, " +
                 "`name` varchar(64) not null)");
     }

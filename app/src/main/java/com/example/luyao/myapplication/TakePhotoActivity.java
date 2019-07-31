@@ -329,7 +329,7 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
         }
 
         //parameters.setPreviewFpsRange(support_fps.get(0)[0], support_fps.get(0)[0]);
-        parameters.setPreviewFpsRange(5000, 7000);
+        //parameters.setPreviewFpsRange(5000, 7000);
         ///List<Camera.Size> picture_size = parameters.getSupportedPictureSizes();
         /*
         for(int i = 0; i < picture_size.size(); i++) {
@@ -349,7 +349,7 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
         //parameters.setPictureFormat(ImageFormat.JPEG);
         //parameters.setPreviewFormat(ImageFormat.NV21);
         //parameters.setPreviewFormat(ImageFormat.YV12);
-        //parameters.setPreviewSize(1280, 720);
+        //parameters.setPreviewSize(1440, 1080);
         parameters.setPreviewSize(1920, 1080);
 
         image_size = parameters.getPreviewSize();

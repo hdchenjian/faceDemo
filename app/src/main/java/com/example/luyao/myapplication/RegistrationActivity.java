@@ -111,8 +111,7 @@ public class RegistrationActivity extends AppCompatActivity {
                 feature_str += String.valueOf(feature[kk]) +",";
             }
             int max_id = userFeatureDB.queryMaxId();
-            userFeatureDB.addUserFeature(
-                    max_id + 1, "", feature_str, 1, 0, "", user_name);
+            userFeatureDB.addUserFeature(max_id + 1, feature_str, "", user_name);
         }
         button_registration.setEnabled(true);
         bitmap_photo = null;

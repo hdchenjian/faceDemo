@@ -17,7 +17,7 @@ import retrofit2.http.Query;
 
 
 public class SimpleHttpClient {
-    public static String BASE_URL = "http://www.duolekong.com/api/";
+    public static String BASE_URL = "http://47.91.129.200:5055/";
 
     public interface ServerAPI {
         @FormUrlEncoded
