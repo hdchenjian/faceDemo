@@ -289,8 +289,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                             max_score_index = i;
                         }
                     }
-                    Map<String, Object> user_feature = all_user_feature.get(max_score_index);
                     if (max_score >= 0.50) {
+                        Map<String, Object> user_feature = all_user_feature.get(max_score_index);
                         update_recognition_image(user_feature, m, face_region, current_image_bitmap_bak);
                         recognition_time = time_now.getTime();
                         user_name[m] = (String)user_feature.get("name");
