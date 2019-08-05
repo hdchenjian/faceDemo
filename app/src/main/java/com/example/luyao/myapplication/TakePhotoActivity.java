@@ -34,6 +34,8 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
+import com.iim.recognition.caffe.LoadLibraryModule;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -62,7 +64,9 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
     private ImageView image_registration;
     private Lock lock = new ReentrantLock();
     Bitmap bitmap_photo;
+    private int[] current_image_data;
     boolean have_take_photo = false;
+    private LoadLibraryModule loadLibraryModule;
 
     private Camera mCamera = null;
     private CameraPreview mPreview;
@@ -88,6 +92,7 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
         button_discard_photo = findViewById(R.id.button_discard_photo);
         button_use_photo.setVisibility(View.INVISIBLE);
         button_discard_photo.setVisibility(View.INVISIBLE);
+        loadLibraryModule = LoadLibraryModule.getInstance();
 
         button_take_photo.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -120,7 +125,8 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
             public void onClick(View v) {
                 Log.d(TAG, "Login");
                 Intent data = new Intent();
-                GlobalParameter.setRegistration_image(bitmap_photo);
+                GlobalParameter.setRegistration_image_bitmap(bitmap_photo);
+                GlobalParameter.setRegistration_image(current_image_data);
                 //data.putExtra("photo", byteArray);
                 //data.putExtra("user_name", user_name);
                 setResult(RESULT_OK, data);
@@ -394,6 +400,7 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
             // byte[] tmp = loadLibraryModule.yv122rgb_native(data, image_size.width, image_size.height);
             // int[] colors = loadLibraryModule.rgb2bitmap_native(info.image_data);
 
+            /*
             Camera.Parameters parameters = camera.getParameters();
             int width = parameters.getPreviewSize().width;
             int height = parameters.getPreviewSize().height;
@@ -406,6 +413,12 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
             Bitmap bitmap = Utils.rotateResizeBitmap(270, bitmap_data);
 
             //Bitmap bitmap = Bitmap.createBitmap(colors, 0, image_size.height, image_size.height, image_size.width, Bitmap.Config.ARGB_8888);
+            */
+            int height_out = image_size.width - 640;
+            int[] colors = loadLibraryModule.yuv2bitmap_native(data, image_size.width, image_size.height, height_out);
+            //Log.e(TAG, "onPreviewFrame " + image_size.width + " "  + image_size.height+ " " + height_out);
+            Bitmap bitmap = Bitmap.createBitmap(colors, 0, image_size.height,
+                    image_size.height, height_out, Bitmap.Config.ARGB_8888);
             TakePhotoActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -413,6 +426,7 @@ public class TakePhotoActivity extends AppCompatActivity implements Camera.Previ
                     if(!have_take_photo) {
                         image_registration.setImageBitmap(bitmap);
                         bitmap_photo = bitmap;
+                        current_image_data = colors;
                     }
                     lock.unlock();
                 }

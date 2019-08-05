@@ -30,6 +30,7 @@ public class RegistrationActivity extends AppCompatActivity {
     private ImageView image_registration;
     private LoadLibraryModule loadLibraryModule;
     Bitmap bitmap_photo = null;
+    int[] bitmap_photo_data;
     private UserFeatureDB userFeatureDB;
 
     @Override
@@ -92,7 +93,7 @@ public class RegistrationActivity extends AppCompatActivity {
         float[] feature = new float[feature_length];
         long[] code_ret = new long[1];
 
-        byte[] byteArray = Utils.bitmapToByte(bitmap_photo);
+        byte[] byteArray = loadLibraryModule.bitmap2rgb_native(bitmap_photo_data);
         /*
         try {
             FileOutputStream out = new FileOutputStream("/sdcard/A/bitmap1.png");
@@ -127,7 +128,8 @@ public class RegistrationActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_Taken_Photo) {
             if (resultCode == RESULT_OK) {
-                bitmap_photo = GlobalParameter.getRegistration_image();
+                bitmap_photo = GlobalParameter.getRegistration_image_bitmap();
+                bitmap_photo_data = GlobalParameter.getRegistration_image();
                 image_registration.setImageBitmap(bitmap_photo);
             }
             button_take_photo.setEnabled(true);

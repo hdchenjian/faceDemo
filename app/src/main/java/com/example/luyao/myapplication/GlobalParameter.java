@@ -6,7 +6,8 @@ public class GlobalParameter {
     private static int organization_id;
     private static String sid;
     private static boolean sessionExpired;
-    private static Bitmap registration_image;
+    private static int[] registration_image;
+    private static Bitmap registration_image_bitmap;
 
     public static int getOrganization_id() {
         return organization_id;
@@ -32,11 +33,19 @@ public class GlobalParameter {
         GlobalParameter.sessionExpired = sessionExpired;
     }
 
-    public static Bitmap getRegistration_image() {
+    public static int[] getRegistration_image() {
         return registration_image;
     }
 
-    public static void setRegistration_image(Bitmap registration_image) {
+    public static void setRegistration_image(int[] registration_image) {
         GlobalParameter.registration_image = registration_image;
+    }
+
+    public static Bitmap getRegistration_image_bitmap() {
+        return registration_image_bitmap;
+    }
+
+    public static void setRegistration_image_bitmap(Bitmap registration_image_bitmap) {
+        GlobalParameter.registration_image_bitmap = registration_image_bitmap;
     }
 }

@@ -560,6 +560,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
 
         thread_message = new UpdateFeatureThread(this);
         thread_message.start();
+        Log.e(TAG, "onCreate " +  Thread.currentThread().getId());
     }
 
     @Override
@@ -703,6 +704,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
 
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
+        Log.e(TAG, "onPreviewFrame " +  Thread.currentThread().getId());
         if (data == null) {
             Log.e(TAG, "onPreviewFrame data null");
             return;
