@@ -81,6 +81,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private Handler handler;
     private boolean have_new_image = false;
     private Bitmap current_image_bitmap;
+    private int[] current_image_data;
     private Bitmap current_image_bitmap_bak;
     private Lock lock = new ReentrantLock();
     private Thread thread_recognition;
@@ -124,7 +125,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 paint.setTextSize(100);
                 paint.setTextAlign(Paint.Align.LEFT);
                 //Bitmap ret = bitmap.copy(bitmap.getConfig(), true);
-                Canvas canvas = new Canvas(bitmap);
+                Bitmap bitmap_copy = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+                Canvas canvas = new Canvas(bitmap_copy);
                 for (int i = 0; i < info.count; i++) {
                     Rect bounds = new Rect();
                     String score_str = String.valueOf(info.score[i]);
@@ -139,7 +141,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                             info.face_region[3], paint);
                 }
                 //Log.e(TAG, user_name[0] + " " + regcognition_num);
-                image_view.setImageBitmap(bitmap);
+                image_view.setImageBitmap(bitmap_copy);
             } else {
                 image_view.setImageBitmap(bitmap);
             }
@@ -153,7 +155,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         }
 
         private Bitmap update_recognition_image(Map<String, Object> user_feature,
-                                                int m, byte[] data, int[] face_region, Bitmap bitmap){
+                                                int m, int[] face_region, Bitmap bitmap){
             long startTime = System.currentTimeMillis();
             runOnUiThread(new Runnable() {
                 @Override
@@ -233,14 +235,16 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         e.printStackTrace();
                     }
                 }
+
                 byte[] data;
+                int[] current_image_data_bak;
                 while(true) {
                     lock.lock();
                     if (!have_new_image) {
                         lock.unlock();
                         try {
                             Thread.sleep(20);
-                            Log.e(TAG, "recognition waiting data sleep");
+                            //Log.e(TAG, "recognition waiting data sleep");
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -248,8 +252,11 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     } else {
                         have_new_image = false;
                         current_image_bitmap_bak = current_image_bitmap;
+                        current_image_data_bak = current_image_data;
                         lock.unlock();
-                        data = Utils.bitmapToByte(current_image_bitmap_bak);
+                        //data = Utils.bitmapToByte(current_image_bitmap_bak);
+                        //Log.e(TAG, "recognition waiting data sleep " + current_image_data_bak.length);
+                        data = loadLibraryModule.bitmap2rgb_native(current_image_data_bak);
                         break;
                     }
                 }
@@ -258,7 +265,9 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 int[] face_region = new int[max_face_num * 4];
                 float[] feature = new float[max_face_num * feature_length];
                 long[] code_ret = new long[1];
-                int face_count = loadLibraryModule.recognition_face(data, face_region, feature, code_ret);
+                int face_count = 0;
+                face_count = loadLibraryModule.recognition_face(data, face_region, feature, code_ret,
+                        current_image_bitmap_bak.getWidth(), current_image_bitmap_bak.getHeight());
 
                 String[] user_name = new String[max_face_num];
                 float[] score = new float[max_face_num];
@@ -282,7 +291,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     }
                     Map<String, Object> user_feature = all_user_feature.get(max_score_index);
                     if (max_score >= 0.50) {
-                        update_recognition_image(user_feature, m, data, face_region, current_image_bitmap_bak);
+                        update_recognition_image(user_feature, m, face_region, current_image_bitmap_bak);
                         recognition_time = time_now.getTime();
                         user_name[m] = (String)user_feature.get("name");
                     } else {
@@ -294,6 +303,19 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 Message msg = new Message();
                 PostRegImage info = new PostRegImage();
                 info.image_data = current_image_bitmap_bak;
+                Log.e(TAG, "get camera data total spend " + (System.currentTimeMillis() - startTime));
+
+                /*
+                face_region[0] = 0;
+                face_region[1] = 0;
+                face_region[2] = 0;
+                face_region[3] = 0;
+                //Log.e(TAG, "opencv detect_face " + current_image_bitmap_bak.getWidth() + " " + current_image_bitmap_bak.getHeight());
+                startTime = System.currentTimeMillis();
+                face_count = loadLibraryModule.detect_face(data, face_region,
+                        current_image_bitmap_bak.getWidth(), current_image_bitmap_bak.getHeight());
+                Log.e(TAG, "opencv detect_face total spend " + (System.currentTimeMillis() - startTime) + " face_count " + face_count);
+                */
                 info.face_region = face_region;
                 info.user_name = user_name;
                 info.count = face_count;
@@ -693,16 +715,25 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 camera_image_height = parameters.getPreviewSize().height;
                 camera_image_format = parameters.getPreviewFormat();
             }
+            /*
             YuvImage yuv = new YuvImage(data, camera_image_format, camera_image_width, camera_image_height, null);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             yuv.compressToJpeg(new Rect(0, 0, camera_image_width, camera_image_height), 50, out);
             byte[] bytes = out.toByteArray();
             Bitmap bitmap_data = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
             Bitmap bitmap = Utils.rotateResizeBitmap(270, bitmap_data);
+            */
+            int height_out = image_size.width - 640;
+            int[] colors = loadLibraryModule.yuv2bitmap_native(data, image_size.width, image_size.height, height_out);
+            //Log.e(TAG, "onPreviewFrame " + image_size.width + " "  + image_size.height+ " " + height_out);
+            Bitmap bitmap = Bitmap.createBitmap(colors, 0, image_size.height,
+                    image_size.height, height_out, Bitmap.Config.ARGB_8888);
+            //Log.e(TAG, "onPreviewFrame total spend " + (System.currentTimeMillis() - startTime));
 
             lock.lock();
             have_new_image = true;
             current_image_bitmap = bitmap;
+            current_image_data = colors;
             lock.unlock();
             /*
             runOnUiThread(new Runnable() {

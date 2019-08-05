@@ -38,7 +38,7 @@ public class Utils {
     public static final byte[] bitmapToByte(Bitmap bitmap)
     {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+        bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream);
         byte[] byteArray = stream.toByteArray();
         //bitmap.recycle();
         return byteArray;

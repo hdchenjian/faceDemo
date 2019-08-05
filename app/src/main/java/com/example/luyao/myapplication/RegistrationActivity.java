@@ -101,7 +101,8 @@ public class RegistrationActivity extends AppCompatActivity {
         }catch (IOException e) {
             e.printStackTrace();
         }*/
-        int face_count = loadLibraryModule.recognition_face(byteArray, face_region, feature, code_ret);
+        int face_count = loadLibraryModule.recognition_face(byteArray, face_region, feature, code_ret,
+                bitmap_photo.getWidth(), bitmap_photo.getHeight());
         if(face_count != 1 || code_ret[0] != 1000){
             toast("注册失败");
         } else {
