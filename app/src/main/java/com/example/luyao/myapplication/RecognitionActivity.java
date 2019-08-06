@@ -11,6 +11,7 @@ import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -23,6 +24,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.alfeye.a1io.A1IoDevBaseUtil;
+import com.alfeye.a1io.A1IoDevManager;
 import com.iim.recognition.caffe.LoadLibraryModule;
 
 import org.json.JSONArray;
@@ -46,16 +49,15 @@ import retrofit2.Response;
 import static java.lang.Math.min;
 
 public class RecognitionActivity extends AppCompatActivity implements Camera.PreviewCallback{
+    private A1IoDevBaseUtil a1IoDevManager;
 
     private LoadLibraryModule loadLibraryModule;
     private final static String TAG = RecognitionActivity.class.getCanonicalName();
     private Camera mCamera = null;
+    private Camera infrared_camera = null;
     private Camera.Size image_size;
-    private static int cameraId = 0;
-    int camera_image_width = 0;
-    int camera_image_height = 0;
-    int camera_image_format;
     private final CameraErrorCallback mErrorCallback = new CameraErrorCallback();
+    private InfraredCameraPreviewCallback infraredCameraPreviewCallback = new InfraredCameraPreviewCallback();
 
     private long recognition_time = 0;
     private long detect_face_time = 0;
@@ -66,6 +68,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private List<TextView> recognition_image_user_name = new ArrayList<>();
 
     private ImageView image_view;
+    private ImageView image_view_infrared;
     private ImageView image_1;
     private TextView image_1_relation;
     private ImageView image_2;
@@ -76,13 +79,14 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     private ImageView recognition_success;
     private TextView text_recognition;
 
-    private SurfaceTexture surfaceTexture;
+    private SurfaceTexture surfaceTexture = new SurfaceTexture(10);
+    private SurfaceTexture surfaceTexture_infrared = new SurfaceTexture(10);
 
     private Handler handler;
     private boolean have_new_image = false;
     private Bitmap current_image_bitmap;
     private int[] current_image_data;
-    private Bitmap current_image_bitmap_bak;
+    private int[] current_image_data_infrared;
     private Lock lock = new ReentrantLock();
     private Thread thread_recognition;
     private boolean thread_recognition_stop;
@@ -238,6 +242,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
 
                 byte[] data;
                 int[] current_image_data_bak;
+                int[] current_image_data_infrared_bak;
+                Bitmap current_image_bitmap_bak;
                 while(true) {
                     lock.lock();
                     if (!have_new_image) {
@@ -253,6 +259,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         have_new_image = false;
                         current_image_bitmap_bak = current_image_bitmap;
                         current_image_data_bak = current_image_data;
+                        current_image_data_infrared_bak = current_image_data_infrared;
                         lock.unlock();
                         //data = Utils.bitmapToByte(current_image_bitmap_bak);
                         //Log.e(TAG, "recognition waiting data sleep " + current_image_data_bak.length);
@@ -274,6 +281,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 lock_user_feature.lock();
                 String person_ids = "";
                 Date time_now = new Date();
+                boolean recognition_success = false;
+                int recognition_index = -1;
                 for (int m = 0; m < face_count; m++) {
                     detect_face_time = time_now .getTime();
                     float max_score = 0;
@@ -294,12 +303,37 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         update_recognition_image(user_feature, m, face_region, current_image_bitmap_bak);
                         recognition_time = time_now.getTime();
                         user_name[m] = (String)user_feature.get("name");
+                        recognition_success = true;
+                        recognition_index = m;
                     } else {
                         user_name[m] = "unkonw";
                     }
                     score[m] = max_score;
                 }
                 lock_user_feature.unlock();
+
+                if(recognition_success && recognition_index >= 0) {
+                    byte[] data_infrared = loadLibraryModule.bitmap2rgb_native(current_image_data_infrared_bak);
+                    int[] face_region_infrared = new int[max_face_num * 4];
+                    float[] feature_infrared = new float[max_face_num * feature_length];
+                    long[] code_ret_infrared = new long[1];
+                    int face_count_infrared = loadLibraryModule.recognition_face(
+                            data_infrared, face_region_infrared, feature_infrared, code_ret_infrared,
+                            current_image_bitmap_bak.getWidth(), current_image_bitmap_bak.getHeight());
+                    if(face_count_infrared != 1 || code_ret_infrared[0] != 1000){
+                        user_name[recognition_index] = "假脸 " + user_name[recognition_index];
+                    } else {
+                        float score_local = 0;
+                        for (int j = 0; j < feature_length; j++) {
+                            score_local += (feature_infrared[j] * feature[j]);
+                        }
+                        Log.e(TAG, "feature_infrared score " + score_local);
+                        if (score_local < 0.5) {
+                            user_name[recognition_index] = "假脸 " + user_name[recognition_index];
+                        }
+                    }
+                }
+
                 Message msg = new Message();
                 PostRegImage info = new PostRegImage();
                 info.image_data = current_image_bitmap_bak;
@@ -527,10 +561,15 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             getSupportActionBar().setTitle("返回");
         }
 
+        a1IoDevManager = A1IoDevManager.initIOManager();
+        //a1IoDevManager.openIRDA();
+        //a1IoDevManager.openLED(7);
+
         Date time_now = new Date();
         detect_face_time = time_now.getTime();
         loadLibraryModule = LoadLibraryModule.getInstance();
         image_view = findViewById(R.id.image_view);
+        image_view_infrared = findViewById(R.id.image_view_infrared);
         image_1 = findViewById(R.id.image_1);
         image_1_relation = findViewById(R.id.image_1_relation);
         image_2 = findViewById(R.id.image_2);
@@ -593,6 +632,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     @Override
     protected void onDestroy() {
         Log.e(TAG, "lifecycle: onDestroy");
+        a1IoDevManager.closeIRDA();
+        a1IoDevManager.closeLED();
         if(thread_recognition != null) thread_recognition_stop = true;
         try {
             thread_recognition.join();
@@ -605,82 +646,100 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
     }
 
     private void startCamera() {
-        if (mCamera != null) {
+        if (mCamera != null || infrared_camera != null) {
             return;
         }
-            //Find the total number of cameras available
         Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
-        for (int i = 0; i < Camera.getNumberOfCameras(); i++) {
-            Camera.getCameraInfo(i, cameraInfo);
-            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                cameraId = i;
-                //break;
+        for (int camera_index = 0; camera_index < Camera.getNumberOfCameras(); camera_index++) {
+            Camera.getCameraInfo(camera_index, cameraInfo);
+            if (cameraInfo.facing != Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                continue;
             }
-        }
-        try {
-            mCamera = Camera.open(cameraId);
-            Log.e(TAG, "cameraId " + cameraId);
-        } catch (Exception e) {
-            mCamera = null;
-            toast("相机不可用！");
-            return;
-        }
 
-        Camera.Parameters parameters = mCamera.getParameters();
-        //Log.e(TAG, "parameters.flatten " + parameters.flatten());
-        List<String> focusModes = parameters.getSupportedFocusModes();
-        if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
-        } else if (focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-        } else if (focusModes.contains(Camera.Parameters.FOCUS_MODE_FIXED)) {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_FIXED);
-        } else {
-            Log.e(TAG, "Could not set FOCUS_MODE");
-        }
-        for(int i = 0; i < focusModes.size(); i++) {
-            Log.e(TAG, "focusModes: " + focusModes.size() +
-                    " " + focusModes.get(i));
-        }
-        List<int[]> support_fps = parameters.getSupportedPreviewFpsRange();
-        Log.e(TAG, "support_fps: " + support_fps.get(0)[0] + " " + support_fps.get(0)[1]);
+            Camera camera_local = null;
+            try {
+                camera_local = Camera.open(camera_index);
+            } catch (Exception e) {
+                toast("相机不可用！");
+                return;
+            }
+            if(camera_index == 0) infrared_camera = camera_local;
+            else mCamera = camera_local;
+
+            Camera.Parameters parameters = camera_local.getParameters();
+            Log.e(TAG, "parameters.flatten " + parameters.flatten());
+            List<String> focusModes = parameters.getSupportedFocusModes();
+            if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            } else if (focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            } else if (focusModes.contains(Camera.Parameters.FOCUS_MODE_FIXED)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_FIXED);
+            } else {
+                Log.e(TAG, "Could not set FOCUS_MODE");
+            }
+            for (int i = 0; i < focusModes.size(); i++) {
+                Log.e(TAG, "focusModes: " + focusModes.size() +
+                        " " + focusModes.get(i));
+            }
+            List<int[]> support_fps = parameters.getSupportedPreviewFpsRange();
+            Log.e(TAG, "support_fps: " + support_fps.get(0)[0] + " " + support_fps.get(0)[1]);
         /*
         for(int i = 0; i < support_fps.size(); i++) {
             Log.e(TAG, "support_fps " + support_fps.size() +
                     " " + support_fps.get(i)[0] + " " + support_fps.get(i)[1]);
         }*/
-        //parameters.setPreviewFpsRange(support_fps.get(0)[0], support_fps.get(0)[0]);
-        //parameters.setPreviewFpsRange(3000,30000);
-        ///List<Camera.Size> picture_size = parameters.getSupportedPictureSizes();
+            //parameters.setPreviewFpsRange(support_fps.get(0)[0], support_fps.get(0)[0]);
+            //parameters.setPreviewFpsRange(3000,30000);
+            ///List<Camera.Size> picture_size = parameters.getSupportedPictureSizes();
         /*
         for(int i = 0; i < picture_size.size(); i++) {
             Log.e(TAG, "picture_size " + picture_size.size() +
                     " " + picture_size.get(i).height + " " + picture_size.get(i).width);
         }
         */
-        //parameters.setPictureSize(1920, 1080);
-        //parameters.setPictureFormat(ImageFormat.JPEG);
-        //parameters.setPreviewFormat(ImageFormat.NV21);
-        //parameters.setPreviewFormat(ImageFormat.YV12);
-        //parameters.setPreviewSize(1280, 720);
-        //parameters.setPreviewSize(1440, 1080);
-        parameters.setPreviewSize(1920, 1080);
+            //parameters.setPictureSize(1920, 1080);
+            //parameters.setPictureFormat(ImageFormat.JPEG);
+            //parameters.setPreviewFormat(ImageFormat.NV21);
+            //parameters.setPreviewFormat(ImageFormat.YV12);
+            //parameters.setPreviewSize(1280, 720);
+            //parameters.setPreviewSize(1440, 1080);
+            parameters.setPreviewSize(1920, 1080);
 
-        image_size = parameters.getPreviewSize();
+            image_size = parameters.getPreviewSize();
+            Log.e(TAG, "image_size " + image_size.width + " " + image_size.height + " " + parameters.getFlashMode());
 
-        mCamera.setParameters(parameters);
-        mCamera.setErrorCallback(mErrorCallback);
-        mCamera.setDisplayOrientation(90);
-        mCamera.setPreviewCallback(this);
-        mCamera.startPreview();
-        try {
-            surfaceTexture = new SurfaceTexture(10);
-            mCamera.setPreviewTexture(surfaceTexture);
-        } catch (Exception e) {
-            Log.e(TAG, "Could not preview the image.", e);
+            if(camera_index == 0) {
+                //parameters.setMeteringAreas(meteringAreas);
+                //parameters.setFocusAreas(meteringAreas);
+            }else{
+                camera_local.setPreviewCallback(this);
+            }
+            //parameters.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
+            camera_local.setParameters(parameters);
+            camera_local.setErrorCallback(mErrorCallback);
+            camera_local.setDisplayOrientation(90);
+            if(camera_index == 0) {
+                camera_local.setPreviewCallback(infraredCameraPreviewCallback);
+            }else{
+                camera_local.setPreviewCallback(this);
+            }
+            camera_local.startPreview();
+            try {
+                if(camera_index == 0) {
+                    camera_local.setPreviewTexture(surfaceTexture);
+                }else{
+                    camera_local.setPreviewTexture(surfaceTexture_infrared);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Could not preview the image.", e);
+            }
+            //parameters = mCamera.getParameters();
+            //Log.e(TAG, "parameters.flatten " + parameters.flatten());
+            //camera_local.stopPreview();
+            //camera_local.release();
         }
-        //parameters = mCamera.getParameters();
-        //Log.e(TAG, "parameters.flatten " + parameters.flatten());
+        //finish();
     }
 
     private void stopCamera() {
@@ -690,6 +749,13 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             mCamera.setErrorCallback(null);
             mCamera.release();
             mCamera = null;
+        }
+        if (infrared_camera != null) {
+            infrared_camera.stopPreview();
+            infrared_camera.setPreviewCallbackWithBuffer(null);
+            infrared_camera.setErrorCallback(null);
+            infrared_camera.release();
+            infrared_camera = null;
         }
     }
 
@@ -704,19 +770,12 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
 
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
-        Log.e(TAG, "onPreviewFrame " +  Thread.currentThread().getId());
+        //Log.e(TAG, "onPreviewFrame " +  Thread.currentThread().getId());
         if (data == null) {
             Log.e(TAG, "onPreviewFrame data null");
             return;
         } else {
             long startTime = System.currentTimeMillis();
-
-            if(camera_image_width == 0) {
-                Camera.Parameters parameters = camera.getParameters();
-                camera_image_width = parameters.getPreviewSize().width;
-                camera_image_height = parameters.getPreviewSize().height;
-                camera_image_format = parameters.getPreviewFormat();
-            }
             /*
             YuvImage yuv = new YuvImage(data, camera_image_format, camera_image_width, camera_image_height, null);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -726,28 +785,17 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             Bitmap bitmap = Utils.rotateResizeBitmap(270, bitmap_data);
             */
             int height_out = image_size.width - 640;
-            int[] colors = loadLibraryModule.yuv2bitmap_native(data, image_size.width, image_size.height, height_out);
-            //Log.e(TAG, "onPreviewFrame " + image_size.width + " "  + image_size.height+ " " + height_out);
+            int[] colors = loadLibraryModule.yuv2bitmap_native(
+                    data, image_size.width, image_size.height, height_out);
             Bitmap bitmap = Bitmap.createBitmap(colors, 0, image_size.height,
                     image_size.height, height_out, Bitmap.Config.ARGB_8888);
-            //Log.e(TAG, "onPreviewFrame total spend " + (System.currentTimeMillis() - startTime));
 
             lock.lock();
             have_new_image = true;
             current_image_bitmap = bitmap;
             current_image_data = colors;
             lock.unlock();
-            /*
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    image_view.setImageBitmap(bitmap);
-                }
-            });
-            Log.e(TAG, "yv122rgb " + (System.currentTimeMillis() - startTime));
-            */
         }
-
     }
 
     public class CameraErrorCallback implements Camera.ErrorCallback {
@@ -766,5 +814,32 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    public class InfraredCameraPreviewCallback implements Camera.PreviewCallback {
+        @Override
+        public void onPreviewFrame(byte[] data, Camera camera) {
+            //Log.e(TAG, "InfraredCameraPreviewCallback " + Thread.currentThread().getId());
+            if (data == null) {
+                Log.e(TAG, "InfraredCameraPreviewCallback data null");
+                return;
+            } else {
+                int height_out = image_size.width - 640;
+                int[] colors = loadLibraryModule.yuv2bitmap_native(
+                        data, image_size.width, image_size.height, height_out);
+                lock.lock();
+                current_image_data_infrared = colors;
+                lock.unlock();
+
+                Bitmap bitmap = Bitmap.createBitmap(colors, 0, image_size.height,
+                        image_size.height, height_out, Bitmap.Config.ARGB_8888);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        image_view_infrared.setImageBitmap(bitmap);
+                    }
+                });
+            }
+        }
     }
 }

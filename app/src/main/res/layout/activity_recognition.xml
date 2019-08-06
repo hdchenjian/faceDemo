@@ -21,6 +21,7 @@
           android:layout_width="match_parent"
           android:layout_height="480dp" />
 
+
     <RelativeLayout
         android:id="@+id/recognition_view"
         android:layout_width="wrap_content"
@@ -86,6 +87,14 @@
             android:text=" "
             android:textColor="@android:color/black"
             android:textSize="12sp" />
+
+
+        <ImageView
+                android:id="@+id/image_view_infrared"
+                android:layout_toRightOf="@id/image_3"
+                android:layout_marginLeft="20dp"
+                android:layout_width="120dp"
+                android:layout_height="160dp" />
     </RelativeLayout>
 
 
@@ -118,6 +127,8 @@
             android:textColor="#ff0092f4"
             android:textSize="15sp" />
     </RelativeLayout>
+
+
 
   </LinearLayout>
 </LinearLayout>
