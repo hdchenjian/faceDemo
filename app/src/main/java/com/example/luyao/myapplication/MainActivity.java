@@ -282,7 +282,8 @@ public class MainActivity extends AppCompatActivity {
 
     private int login(String user_phone, String password) {
         SimpleHttpClient.ServerAPI service = Utils.getHttpClient(6);
-        String mac = Utils.getMac(this).replace(":", "");
+        //String mac = Utils.getMac(this).replace(":", "");
+        String mac = "FCA47AC01A75";
         Call<ResponseBody> call = service.login(user_phone, password, mac);
         call.enqueue(new Callback<ResponseBody>() {
             @Override

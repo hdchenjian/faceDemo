@@ -273,6 +273,14 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 float[] feature = new float[max_face_num * feature_length];
                 long[] code_ret = new long[1];
                 int face_count = 0;
+
+                /*
+                int[] pix = new int[current_image_bitmap_bak.getHeight() * current_image_bitmap_bak.getWidth()];
+                current_image_bitmap_bak.getPixels(pix, 0, current_image_bitmap_bak.getWidth(), 0, 0,
+                        current_image_bitmap_bak.getWidth(), current_image_bitmap_bak.getHeight());
+                data = loadLibraryModule.bitmap2rgb_native(pix);
+                */
+
                 face_count = loadLibraryModule.recognition_face(data, face_region, feature, code_ret,
                         current_image_bitmap_bak.getWidth(), current_image_bitmap_bak.getHeight());
 
@@ -312,7 +320,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 }
                 lock_user_feature.unlock();
 
-                if(recognition_success && recognition_index >= 0) {
+                if(recognition_success && recognition_index >= 0 && false) {
                     byte[] data_infrared = loadLibraryModule.bitmap2rgb_native(current_image_data_infrared_bak);
                     int[] face_region_infrared = new int[max_face_num * 4];
                     float[] feature_infrared = new float[max_face_num * feature_length];
