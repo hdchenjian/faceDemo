@@ -21,13 +21,19 @@ import com.iim.recognition.caffe.LoadLibraryModule;
 
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
-
+    private UserFeatureDB userFeatureDB;
     private LoadLibraryModule loadLibraryModule;
     private InitNetworkThread initNetworkThread;
     private final static String TAG = MainActivity.class.getCanonicalName();
@@ -94,8 +100,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //button_mode_manager.setEnabled(false);
+        button_mode_manager.setEnabled(false);
         button_mode_recognition.setEnabled(false);
+        userFeatureDB = new UserFeatureDB(this);
         initNetworkThread = new InitNetworkThread();
         initNetworkThread.start();
         Log.e(TAG, "oncreate finish");
@@ -121,7 +128,9 @@ public class MainActivity extends AppCompatActivity {
     private void initDnn() {
         if (loadLibraryModule == null) {
             loadLibraryModule = LoadLibraryModule.getInstance();
-            loadLibraryModule.recognition_start();
+            String model_path = "/sdcard/A/";
+            int use_spoofing = 1;
+            loadLibraryModule.recognition_start(model_path, use_spoofing);
         }
     }
 
@@ -256,6 +265,66 @@ public class MainActivity extends AppCompatActivity {
             super();
         }
 
+
+        private void registration_local_image(){
+            String registration_image_path = "/sdcard/A/注册图片";
+            String deleted_suffix = "/已注册图片";
+            String deleted_image_path_path = registration_image_path + deleted_suffix;
+            File image_path = new File(registration_image_path);
+            if(!image_path.exists()){
+                image_path.mkdirs();
+            }
+            File deleted_image_path = new File(deleted_image_path_path);
+            if(!deleted_image_path.exists()){
+                deleted_image_path.mkdirs();
+            }
+            File[] array = image_path.listFiles();
+            if(array.length == 0) {
+                Log.e(TAG, "registration_local_image None image found in current directory!");
+            }
+            for(int j = 0; j < array.length; j++){
+                if(!array[j].isFile()) continue;
+                if(!array[j].getName().endsWith(".jpg") && !array[j].getName().endsWith(".png")) continue;
+                Log.e(TAG, array[j].getName());
+                byte[] image_data = new byte[(int)array[j].length()];
+                try {
+                    BufferedInputStream buf = new BufferedInputStream(new FileInputStream(array[j]));
+                    buf.read(image_data, 0, image_data.length);
+                    buf.close();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                int max_face_num = 10;
+                int feature_length = 512;
+                int[] face_region = new int[max_face_num * 4];
+                float[] feature = new float[max_face_num * feature_length];
+                long[] code_ret = new long[1];
+                int width = 0;
+                int height = 0;
+                loadLibraryModule.recognition_face(image_data, face_region, feature, code_ret, width, height);
+                if(code_ret[0] == 1000){
+                    String feature_str = "";
+                    for(int kk = 0; kk < feature_length; kk++){
+                        feature_str += String.valueOf(feature[kk]) +",";
+                    }
+                    String[] filePathSplit = array[j].getName().split("\\.");
+                    String user_name = filePathSplit[0];
+                    int max_id = userFeatureDB.queryMaxId();
+                    userFeatureDB.addUserFeature(max_id + 1, feature_str, "", user_name);
+                    File tmp_file = new File(array[j].getParent() + deleted_suffix + "/" + array[j].getName());
+                    array[j].renameTo(tmp_file);
+                    Log.e(TAG, "registration_local_image success " + array[j].getName());
+                } else {
+                    Log.e(TAG, "registration_local_image failed " + array[j].getName() +
+                            " code:" + code_ret[0]);
+                }
+            }
+        }
+
+
         @Override
         public void run() {
             while(!getAllPermissionSuccess) {
@@ -268,6 +337,8 @@ public class MainActivity extends AppCompatActivity {
             }
             initDnn();
             Log.e(TAG, "initDnn over ");
+            registration_local_image();
+
             login("15919460519", Utils.md5("123456"));
             runOnUiThread(new Runnable() {
                 @Override
@@ -276,7 +347,6 @@ public class MainActivity extends AppCompatActivity {
                     button_mode_recognition.setEnabled(true);
                 }
             });
-
         }
     }
 

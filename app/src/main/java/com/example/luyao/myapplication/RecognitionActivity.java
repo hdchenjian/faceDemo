@@ -50,6 +50,9 @@ import static java.lang.Math.min;
 
 public class RecognitionActivity extends AppCompatActivity implements Camera.PreviewCallback{
     private A1IoDevBaseUtil a1IoDevManager;
+    private boolean enable_spoofing = true;
+    private boolean save_spoofing_image = true;
+    private boolean use_spoofing = true;
 
     private LoadLibraryModule loadLibraryModule;
     private final static String TAG = RecognitionActivity.class.getCanonicalName();
@@ -245,6 +248,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 int[] current_image_data_infrared_bak;
                 Bitmap current_image_bitmap_bak;
                 while(true) {
+                    if(thread_recognition_stop) return;
                     lock.lock();
                     if (!have_new_image) {
                         lock.unlock();
@@ -320,7 +324,13 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 }
                 lock_user_feature.unlock();
 
-                if(recognition_success && recognition_index >= 0 && false) {
+                int is_real = 1;
+                if(recognition_success && save_spoofing_image){
+                    loadLibraryModule.save_spoofingimage(data, face_region, current_image_bitmap_bak.getWidth(),
+                            current_image_bitmap_bak.getHeight(), 1, is_real);
+                }
+
+                if(recognition_success && recognition_index >= 0 && enable_spoofing) {
                     byte[] data_infrared = loadLibraryModule.bitmap2rgb_native(current_image_data_infrared_bak);
                     int[] face_region_infrared = new int[max_face_num * 4];
                     float[] feature_infrared = new float[max_face_num * feature_length];
@@ -328,9 +338,24 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                     int face_count_infrared = loadLibraryModule.recognition_face(
                             data_infrared, face_region_infrared, feature_infrared, code_ret_infrared,
                             current_image_bitmap_bak.getWidth(), current_image_bitmap_bak.getHeight());
+
+                    /*
+                    for (int j = 0; j < 4; j++) {
+                        Log.e(TAG, "face_region rgb " + face_region[j] + " face_region_infrared " + face_region_infrared[j]);
+                    }
+                    float fB = 0.310F;
+                    Log.e(TAG, "D " + Math.abs((float)(face_region[0] - face_region_infrared[0]) / 100.0F));
+                    float distance = fB / Math.abs((float)(face_region[0] - face_region_infrared[0]) / 100.0F);
+                    */
+
                     if(face_count_infrared != 1 || code_ret_infrared[0] != 1000){
                         user_name[recognition_index] = "假脸 " + user_name[recognition_index];
                     } else {
+                        if(save_spoofing_image) {
+                            loadLibraryModule.save_spoofingimage(data_infrared, face_region_infrared,
+                                    current_image_bitmap_bak.getWidth(),
+                                    current_image_bitmap_bak.getHeight(), 0, is_real);
+                        }
                         float score_local = 0;
                         for (int j = 0; j < feature_length; j++) {
                             score_local += (feature_infrared[j] * feature[j]);
@@ -339,14 +364,24 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                         if (score_local < 0.5) {
                             user_name[recognition_index] = "假脸 " + user_name[recognition_index];
                         }
+                        if(use_spoofing){
+                            int spoofing_result_infrared = loadLibraryModule.run_spoofing(data_infrared,
+                                    face_region_infrared, current_image_bitmap_bak.getWidth(),
+                                    current_image_bitmap_bak.getHeight());
+                            int spoofing_result = loadLibraryModule.run_spoofing(data, face_region,
+                                    current_image_bitmap_bak.getWidth(), current_image_bitmap_bak.getHeight());
+                            Log.e(TAG, "spoofing_result " + spoofing_result +
+                                    " spoofing_result_infrared " + spoofing_result_infrared);
+                            if (spoofing_result_infrared != 1 || spoofing_result != 1) {
+                                user_name[recognition_index] = "假脸 " + user_name[recognition_index];
+                            }
+                        }
                     }
                 }
 
                 Message msg = new Message();
                 PostRegImage info = new PostRegImage();
                 info.image_data = current_image_bitmap_bak;
-                Log.e(TAG, "get camera data total spend " + (System.currentTimeMillis() - startTime));
-
                 /*
                 face_region[0] = 0;
                 face_region[1] = 0;
@@ -369,10 +404,9 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 for (int m = 0; m < face_count; m++) {
                     face_size += (" " + face_region[2] + "x" + face_region[3]);
                 }
-                /*
                 Log.e(TAG, "face_count: " + face_count + " recognition total spend " +
-                        (System.currentTimeMillis() - startTime) + " face_size " + face_size);
-                        */
+                        (System.currentTimeMillis() - startTime) + "ms face_size " + face_size);
+
             }
         }
     }
@@ -556,6 +590,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             Log.e(TAG, "feature num: " + i + "/" +
                     all_user_feature.size() + " " + user_feature.get("name"));
         }
+        Log.e(TAG, "total feature num " + all_user_feature.size());
         lock_user_feature.unlock();
     }
     @Override
@@ -570,8 +605,8 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         }
 
         a1IoDevManager = A1IoDevManager.initIOManager();
-        //a1IoDevManager.openIRDA();
-        //a1IoDevManager.openLED(7);
+        a1IoDevManager.openIRDA();
+        a1IoDevManager.openLED(10);
 
         Date time_now = new Date();
         detect_face_time = time_now.getTime();
@@ -639,18 +674,20 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
 
     @Override
     protected void onDestroy() {
-        Log.e(TAG, "lifecycle: onDestroy");
         a1IoDevManager.closeIRDA();
         a1IoDevManager.closeLED();
         if(thread_recognition != null) thread_recognition_stop = true;
         try {
             thread_recognition.join();
+            //Log.e(TAG, "lifecycle: onDestroy thread_recognition joined");
             thread_message.join();
+            //Log.e(TAG, "lifecycle: onDestroy thread_message joined");
         } catch (InterruptedException e){
             e.printStackTrace();
         }
         stopCamera();
         super.onDestroy();
+        Log.e(TAG, "lifecycle: onDestroy over");
     }
 
     private void startCamera() {
@@ -658,11 +695,13 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             return;
         }
         Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+        int camera_index_infrared = 0;
         for (int camera_index = 0; camera_index < Camera.getNumberOfCameras(); camera_index++) {
             Camera.getCameraInfo(camera_index, cameraInfo);
             if (cameraInfo.facing != Camera.CameraInfo.CAMERA_FACING_FRONT) {
                 continue;
             }
+            if(!enable_spoofing && camera_index == camera_index_infrared) continue;
 
             Camera camera_local = null;
             try {
@@ -671,7 +710,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
                 toast("相机不可用！");
                 return;
             }
-            if(camera_index == 0) infrared_camera = camera_local;
+            if(camera_index == camera_index_infrared) infrared_camera = camera_local;
             else mCamera = camera_local;
 
             Camera.Parameters parameters = camera_local.getParameters();
@@ -717,7 +756,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             image_size = parameters.getPreviewSize();
             Log.e(TAG, "image_size " + image_size.width + " " + image_size.height + " " + parameters.getFlashMode());
 
-            if(camera_index == 0) {
+            if(camera_index == camera_index_infrared) {
                 //parameters.setMeteringAreas(meteringAreas);
                 //parameters.setFocusAreas(meteringAreas);
             }else{
@@ -727,14 +766,14 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             camera_local.setParameters(parameters);
             camera_local.setErrorCallback(mErrorCallback);
             camera_local.setDisplayOrientation(90);
-            if(camera_index == 0) {
+            if(camera_index == camera_index_infrared) {
                 camera_local.setPreviewCallback(infraredCameraPreviewCallback);
             }else{
                 camera_local.setPreviewCallback(this);
             }
             camera_local.startPreview();
             try {
-                if(camera_index == 0) {
+                if(camera_index == camera_index_infrared) {
                     camera_local.setPreviewTexture(surfaceTexture);
                 }else{
                     camera_local.setPreviewTexture(surfaceTexture_infrared);
