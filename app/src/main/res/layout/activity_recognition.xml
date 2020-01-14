@@ -128,7 +128,5 @@
             android:textSize="15sp" />
     </RelativeLayout>
 
-
-
   </LinearLayout>
 </LinearLayout>

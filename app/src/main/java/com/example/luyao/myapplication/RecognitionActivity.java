@@ -50,8 +50,8 @@ import static java.lang.Math.min;
 
 public class RecognitionActivity extends AppCompatActivity implements Camera.PreviewCallback{
     private A1IoDevBaseUtil a1IoDevManager;
-    private boolean enable_spoofing = true;
-    private boolean save_spoofing_image = true;
+    private boolean enable_spoofing = false;
+    private boolean save_spoofing_image = false;
     private boolean use_spoofing = true;
 
     private LoadLibraryModule loadLibraryModule;
@@ -641,7 +641,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         thread_recognition.start();
 
         thread_message = new UpdateFeatureThread(this);
-        thread_message.start();
+        //thread_message.start();
         Log.e(TAG, "onCreate " +  Thread.currentThread().getId());
     }
 
@@ -680,7 +680,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
         try {
             thread_recognition.join();
             //Log.e(TAG, "lifecycle: onDestroy thread_recognition joined");
-            thread_message.join();
+            //thread_message.join();
             //Log.e(TAG, "lifecycle: onDestroy thread_message joined");
         } catch (InterruptedException e){
             e.printStackTrace();
@@ -695,7 +695,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             return;
         }
         Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
-        int camera_index_infrared = 0;
+        int camera_index_infrared = 1;
         for (int camera_index = 0; camera_index < Camera.getNumberOfCameras(); camera_index++) {
             Camera.getCameraInfo(camera_index, cameraInfo);
             if (cameraInfo.facing != Camera.CameraInfo.CAMERA_FACING_FRONT) {
@@ -765,7 +765,7 @@ public class RecognitionActivity extends AppCompatActivity implements Camera.Pre
             //parameters.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
             camera_local.setParameters(parameters);
             camera_local.setErrorCallback(mErrorCallback);
-            camera_local.setDisplayOrientation(90);
+            camera_local.setDisplayOrientation(270);
             if(camera_index == camera_index_infrared) {
                 camera_local.setPreviewCallback(infraredCameraPreviewCallback);
             }else{
